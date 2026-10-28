@@ -15,7 +15,7 @@
 - Named strategy scenarios persisted in browser local storage, editable configuration, baseline deltas, duplicate/remove actions and CSV export.
 - FastF1 cache, graceful source errors, synthetic-data unit tests and a GitHub Actions workflow.
 
-Data coverage depends on the historical session, upstream availability and available channels. Event schedule integration was verified live; a live 2024 session request in the development environment returned no lap rows without upstream authentication. Apexion reports that state with setup guidance rather than inventing historical measurements. The overview uses a small labelled synthetic sample pace series only when historical laps have not loaded; sample values are never presented as measurements.
+Data coverage depends on the historical session, upstream availability and available channels. Apexion uses FastF1's dynamic event schedule and session loader, caches event schedules in memory and relies on FastF1's disk cache for downloaded session data. The live 2024 schedule loaded successfully with 24 events in this environment. A live Bahrain race load reached FastF1 but returned no timing data because upstream timing endpoints reported that F1 account credentials were unavailable; Apexion returned an actionable 503 instead of inventing historical measurements. If needed, set `F1_USERNAME` and `F1_PASSWORD` in the shell before starting Apexion. When FastF1 returns classification or metadata without timed laps, Apexion marks the session as partial and leaves lap fields empty. The overview's synthetic sample pace series is explicitly labelled and only used when historical laps have not loaded.
 
 ## Run locally with one command
 

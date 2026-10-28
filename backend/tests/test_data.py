@@ -1,5 +1,6 @@
 import pandas as pd
 import pytest
+from datetime import datetime
 
 from app import data
 
@@ -35,6 +36,61 @@ def test_summary_includes_classification_compounds_distance_and_pit_count(monkey
     assert summary["compounds"] == ["HARD", "MEDIUM"]
     assert summary["classification"][0]["driver"] == "AAA"
     assert summary["classification"][0]["time"] == 270
+    assert summary["status"] == "loaded"
+
+
+def test_seasons_follow_current_calendar_year():
+    assert data.seasons()[0] == 2018
+    assert data.seasons()[-1] == datetime.now().year
+
+
+def test_event_schedule_is_cached_and_normalized(monkeypatch):
+    calls = []
+    schedule = pd.DataFrame([
+        {"RoundNumber": 1, "EventName": "Opening GP", "Session1": "Practice 1", "Session2": "Race"},
+        {"RoundNumber": 0, "EventName": "Pre-season test", "Session1": "Practice 1"},
+    ])
+    provider = type("FastF1", (), {"get_event_schedule": staticmethod(lambda year, **kwargs: calls.append((year, kwargs)) or schedule)})
+    monkeypatch.setattr(data, "fastf1", provider)
+    data.events.cache_clear()
+
+    first = data.events(2024)
+    second = data.events(2024)
+
+    assert first == [{"name": "Opening GP", "round": 1, "sessions": ["Practice 1", "Race"]}]
+    assert second == first
+    assert calls == [(2024, {"include_testing": False})]
+    data.events.cache_clear()
+
+
+def test_session_loader_caches_loaded_session(monkeypatch):
+    calls = []
+    session = session_fixture()
+    session.load = lambda **_: None
+    provider = type("FastF1", (), {"get_session": staticmethod(lambda *args: calls.append(args) or session)})
+    monkeypatch.setattr(data, "fastf1", provider)
+    data._load.cache_clear()
+
+    first = data._load(2024, "Example GP", "Race")
+    second = data._load(2024, "Example GP", "Race")
+
+    assert first is second is session
+    assert calls == [(2024, "Example GP", "Race")]
+    data._load.cache_clear()
+
+
+def test_partial_session_keeps_classification_without_inventing_laps(monkeypatch):
+    session = session_fixture()
+    session.laps = Laps(columns=["Driver", "LapNumber", "LapTime", "Compound", "PitInTime"])
+    monkeypatch.setattr(data, "_load", lambda *_: session)
+
+    summary = data.session_summary(2024, "Example GP")
+
+    assert summary["status"] == "partial"
+    assert summary["lap_observations"] == 0
+    assert summary["race_laps"] == 0
+    assert summary["drivers"] == ["AAA"]
+    assert summary["classification"][0]["driver"] == "AAA"
 
 
 def test_driver_analysis_excludes_pit_lap_and_computes_robust_statistics(monkeypatch):

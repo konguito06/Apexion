@@ -11,6 +11,41 @@ def test_health_endpoint():
     assert result["data_provider"] == "FastF1"
 
 
+def test_seasons_endpoint_tracks_current_supported_season():
+    from datetime import datetime
+
+    response = client.get("/api/seasons")
+    assert response.status_code == 200
+    assert response.json()["seasons"][0] == 2018
+    assert response.json()["seasons"][-1] == datetime.now().year
+
+
+def test_events_endpoint_returns_dynamic_schedule(monkeypatch):
+    monkeypatch.setattr("app.data.events", lambda year: [{"name": "Example GP", "round": 1, "sessions": ["Practice 1", "Race"]}])
+
+    response = client.get("/api/events?season=2024")
+
+    assert response.status_code == 200
+    assert response.json()["events"][0]["sessions"] == ["Practice 1", "Race"]
+
+
+def test_events_endpoint_rejects_unsupported_future_season():
+    response = client.get("/api/events?season=2099")
+    assert response.status_code == 422
+    assert "2018" in response.json()["detail"]
+
+
+def test_events_endpoint_explains_unavailable_source(monkeypatch):
+    def unavailable(_year):
+        raise RuntimeError("Check your connection or configure F1 account credentials")
+
+    monkeypatch.setattr("app.data.events", unavailable)
+    response = client.get("/api/events?season=2024")
+
+    assert response.status_code == 503
+    assert "credentials" in response.json()["detail"]
+
+
 def test_simulation_endpoint():
     response = client.post("/api/simulations", json={"race_laps": 10, "compounds": ["MEDIUM", "HARD"], "pit_laps": [5]})
     assert response.status_code == 200

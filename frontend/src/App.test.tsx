@@ -17,6 +17,24 @@ function provideResizeObserver() {
 }
 
 describe('Apexion navigation', () => {
+  it('shows a non-blocking loading status while FastF1 event choices are being retrieved', async () => {
+    provideResizeObserver();
+    let finishSchedule!: (response: Response) => void;
+    const supportedSeasons = Array.from({ length: new Date().getFullYear() - 2017 }, (_, i) => 2018 + i);
+    vi.stubGlobal('fetch', vi.fn((input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.endsWith('/api/seasons')) return Promise.resolve(new Response(JSON.stringify({ seasons: supportedSeasons })));
+      if (url.endsWith('/api/health')) return Promise.resolve(new Response(JSON.stringify({ status: 'ok' })));
+      if (url.includes('/api/events')) return new Promise<Response>(resolve => { finishSchedule = resolve; });
+      return Promise.resolve(new Response(JSON.stringify({})));
+    }));
+
+    render(<App />);
+    expect((await screen.findByRole('status')).textContent).toContain('Loading');
+    finishSchedule(new Response(JSON.stringify({ events: [] })));
+    expect(await screen.findByText(/No events are available/)).toBeTruthy();
+  });
+
   it('opens the simulator and displays its API result', async () => {
     provideResizeObserver();
     vi.stubGlobal('fetch', vi.fn(async (input: RequestInfo | URL) => {

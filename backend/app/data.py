@@ -2,6 +2,7 @@
 from functools import lru_cache
 from pathlib import Path
 from typing import Any
+from datetime import datetime
 
 try:
     import fastf1
@@ -16,7 +17,9 @@ except Exception:  # Keep simulation/API startup available if FastF1 is absent.
 
 
 def seasons() -> list[int]:
-    return list(range(2018, 2027))
+    # FastF1's supported F1 timing era starts in 2018. Include the current
+    # season dynamically so this list does not go stale at the end of a year.
+    return list(range(2018, datetime.now().year + 1))
 
 
 def _missing(value: Any) -> bool:
@@ -45,29 +48,42 @@ def _load(year: int, event: str, session_name: str) -> Any:
     session = fastf1.get_session(year, event, session_name)
     session.load(telemetry=True, laps=True, weather=False, messages=False)
     laps = getattr(session, "laps", None)
-    if laps is None or laps.empty or "LapTime" not in laps or not laps["LapTime"].notna().any():
+    results = getattr(session, "results", None)
+    has_results = results is not None and not results.empty
+    has_laps = laps is not None and not laps.empty
+    has_timed_laps = has_laps and "LapTime" in laps and laps["LapTime"].notna().any()
+    if not has_laps and not has_results:
         raise RuntimeError(
-            "FastF1 returned no lap data for this session. Check upstream availability; "
+            "FastF1 returned no classification or lap data for this session. Check upstream availability; "
             "the current F1 timing feed may require F1_USERNAME and F1_PASSWORD."
         )
+    # Some sessions expose a classification or event metadata but no lap
+    # timings. Keep that useful source data and report the session as partial.
     return session
 
 
+@lru_cache(maxsize=20)
 def events(year: int) -> list[dict]:
     if fastf1 is None:
-        return []
+        raise RuntimeError("FastF1 is not installed; install backend requirements to load historical events")
     try:
         schedule = fastf1.get_event_schedule(year, include_testing=False)
         result = []
         for _, row in schedule.iterrows():
-            round_number = int(row.RoundNumber)
-            if round_number <= 0:
+            round_value = _number(row.get("RoundNumber"))
+            if round_value is None or round_value <= 0:
                 continue
             sessions = [str(row.get(f"Session{i}")) for i in range(1, 6) if not _missing(row.get(f"Session{i}"))]
-            result.append({"name": str(row.EventName), "round": round_number, "sessions": sessions})
+            event_name = row.get("EventName")
+            if _missing(event_name) or not sessions:
+                continue
+            result.append({"name": str(event_name), "round": int(round_value), "sessions": sessions})
         return result
     except Exception as exc:
-        raise RuntimeError(f"Could not retrieve {year} event schedule: {exc}") from exc
+        raise RuntimeError(
+            f"Could not retrieve the {year} event schedule: {exc}. Check your internet connection; "
+            "if the upstream timing feed requires authentication, set F1_USERNAME and F1_PASSWORD."
+        ) from exc
 
 
 def _classification(session: Any) -> list[dict]:
@@ -96,7 +112,7 @@ def _classification(session: Any) -> list[dict]:
 
 def session_summary(year: int, event: str, session_name: str = "R") -> dict:
     session = _load(year, event, session_name)
-    laps = session.laps
+    laps = getattr(session, "laps", None)
     try:
         session_date = str(session.date)
     except Exception as exc:
@@ -106,28 +122,38 @@ def session_summary(year: int, event: str, session_name: str = "R") -> dict:
                 "the current F1 timing feed may require F1_USERNAME and F1_PASSWORD."
             ) from exc
         raise
-    compounds = sorted(str(value) for value in laps["Compound"].dropna().unique()) if "Compound" in laps else []
-    pit_stops = int(laps["PitInTime"].notna().sum()) if "PitInTime" in laps else 0
-    max_lap = int(laps["LapNumber"].max()) if len(laps) and "LapNumber" in laps else 0
+    compounds = sorted(str(value) for value in laps["Compound"].dropna().unique()) if laps is not None and "Compound" in laps else []
+    pit_stops = int(laps["PitInTime"].notna().sum()) if laps is not None and "PitInTime" in laps else 0
+    max_lap = int(laps["LapNumber"].max()) if laps is not None and len(laps) and "LapNumber" in laps else 0
     event_name = str(getattr(getattr(session, "event", {}), "EventName", event))
+    drivers = set(str(x) for x in laps["Driver"].dropna().unique()) if laps is not None and "Driver" in laps else set()
+    results = getattr(session, "results", None)
+    if results is not None and "Abbreviation" in results:
+        drivers.update(str(x) for x in results["Abbreviation"].dropna().unique())
     return {
         "year": year, "event": event_name, "session": session_name,
-        "date": session_date, "drivers": sorted(str(x) for x in laps["Driver"].dropna().unique()),
-        "race_laps": max_lap, "lap_observations": int(len(laps)), "pit_stops": pit_stops,
+        "date": session_date, "drivers": sorted(drivers),
+        "race_laps": max_lap, "lap_observations": int(len(laps)) if laps is not None else 0, "pit_stops": pit_stops,
         "compounds": compounds, "classification": _classification(session),
-        "data_source": "FastF1 historical data", "status": "loaded",
+        "data_source": "FastF1 historical data", "status": "loaded" if laps is not None and not laps.empty and "LapTime" in laps and laps["LapTime"].notna().any() else "partial",
     }
 
 
 def driver_laps(year: int, event: str, driver: str, session_name: str = "R") -> list[dict]:
     session = _load(year, event, session_name)
-    laps = session.laps.pick_drivers(driver)
+    all_laps = getattr(session, "laps", None)
+    if all_laps is None or all_laps.empty or "Driver" not in all_laps:
+        return []
+    laps = all_laps.pick_drivers(driver)
     fields = ("Sector1Time", "Sector2Time", "Sector3Time")
     result = []
     for _, lap in laps.iterrows():
+        lap_number = _number(lap.get("LapNumber"))
+        if lap_number is None:
+            continue
         value = lap.get("LapTime")
         result.append({
-            "lap": int(lap["LapNumber"]), "seconds": _seconds(value),
+            "lap": int(lap_number), "seconds": _seconds(value),
             "sector_1": _seconds(lap.get(fields[0])), "sector_2": _seconds(lap.get(fields[1])),
             "sector_3": _seconds(lap.get(fields[2])),
             "compound": "UNKNOWN" if _missing(lap.get("Compound")) else str(lap.get("Compound")),
@@ -140,7 +166,8 @@ def driver_laps(year: int, event: str, driver: str, session_name: str = "R") -> 
 
 def driver_analysis(year: int, event: str, driver: str, session_name: str = "R") -> dict:
     session = _load(year, event, session_name)
-    laps = session.laps.pick_drivers(driver)
+    all_laps = getattr(session, "laps", None)
+    laps = all_laps.pick_drivers(driver) if all_laps is not None and not all_laps.empty and "Driver" in all_laps else pd.DataFrame()
     observations = driver_laps(year, event, driver, session_name)
     valid = [lap for lap in observations if lap["seconds"] is not None and not lap["pit_in"] and not lap["pit_out"]]
     times = [lap["seconds"] for lap in valid]
@@ -175,7 +202,10 @@ def driver_analysis(year: int, event: str, driver: str, session_name: str = "R")
 
 def telemetry(year: int, event: str, driver: str, lap_number: int, session_name: str = "R") -> list[dict]:
     session = _load(year, event, session_name)
-    lap = session.laps.pick_drivers(driver).pick_laps(lap_number)
+    all_laps = getattr(session, "laps", None)
+    if all_laps is None or all_laps.empty or "Driver" not in all_laps or "LapNumber" not in all_laps:
+        return []
+    lap = all_laps.pick_drivers(driver).pick_laps(lap_number)
     if lap.empty:
         return []
     frame = lap.iloc[0].get_telemetry().add_distance()

@@ -36,13 +36,20 @@ class OptimiseRequest(BaseModel):
 
 
 class TelemetryCompareRequest(BaseModel):
-    year: int = Field(ge=2018, le=2026)
+    year: int = Field(ge=2018)
     event: str = Field(min_length=1, max_length=100)
     first_driver: str = Field(min_length=1, max_length=5)
     first_lap: int = Field(ge=1, le=100)
     second_driver: str = Field(min_length=1, max_length=5)
     second_lap: int = Field(ge=1, le=100)
     session: str = Field(default="R", max_length=20)
+
+    @field_validator("year")
+    @classmethod
+    def validate_supported_season(cls, value):
+        if value > max(data.seasons()):
+            raise ValueError(f"Season must be between 2018 and {max(data.seasons())}")
+        return value
 
 
 def _source_error(feature: str, exc: Exception) -> str:
@@ -62,7 +69,9 @@ def get_seasons():
 
 
 @app.get("/api/events")
-def get_events(season: int = Query(ge=2018, le=2026)):
+def get_events(season: int = Query(ge=2018)):
+    if season not in data.seasons():
+        raise HTTPException(422, f"Season must be between 2018 and {max(data.seasons())}")
     try:
         return {"season": season, "events": data.events(season)}
     except RuntimeError as exc:
