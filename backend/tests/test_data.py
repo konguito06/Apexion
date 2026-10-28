@@ -79,6 +79,27 @@ def test_session_loader_caches_loaded_session(monkeypatch):
     data._load.cache_clear()
 
 
+def test_evaluation_lap_loader_requests_timing_without_telemetry_and_normalizes_quality(monkeypatch):
+    session = session_fixture()
+    session.laps["TrackStatus"] = ["1", "1", "4"]
+    session.laps["IsAccurate"] = [True, False, True]
+    calls = []
+    session.load = lambda **kwargs: calls.append(kwargs)
+    provider = type("FastF1", (), {"get_session": staticmethod(lambda *args: session)})
+    monkeypatch.setattr(data, "fastf1", provider)
+    data._load_laps_for_evaluation.cache_clear()
+
+    observations = data.evaluation_laps(2024, "Example GP")
+
+    assert calls == [{"telemetry": False, "laps": True, "weather": False, "messages": False}]
+    assert observations[0]["seconds"] == 92
+    assert observations[0]["track_status"] == "1"
+    assert observations[0]["is_accurate"] is True
+    assert observations[2]["track_status"] == "4"
+    assert observations[2]["pit_in"] is True
+    data._load_laps_for_evaluation.cache_clear()
+
+
 def test_partial_session_keeps_classification_without_inventing_laps(monkeypatch):
     session = session_fixture()
     session.laps = Laps(columns=["Driver", "LapNumber", "LapTime", "Compound", "PitInTime"])

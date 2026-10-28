@@ -62,6 +62,48 @@ def _load(year: int, event: str, session_name: str) -> Any:
     return session
 
 
+@lru_cache(maxsize=32)
+def _load_laps_for_evaluation(year: int, event: str, session_name: str = "R") -> Any:
+    """Load only timing laps for batch evaluation; do not download telemetry."""
+    if fastf1 is None:
+        raise RuntimeError("FastF1 is not installed")
+    session = fastf1.get_session(year, event, session_name)
+    session.load(telemetry=False, laps=True, weather=False, messages=False)
+    laps = getattr(session, "laps", None)
+    if laps is None or laps.empty or "LapTime" not in laps:
+        raise RuntimeError("FastF1 returned no race lap timing rows")
+    return session
+
+
+def evaluation_laps(year: int, event: str, session_name: str = "R") -> list[dict]:
+    """Return all drivers' normalized race-lap timing and quality fields."""
+    session = _load_laps_for_evaluation(year, event, session_name)
+    laps = getattr(session, "laps", None)
+    if laps is None or laps.empty:
+        return []
+    result = []
+    for _, lap in laps.iterrows():
+        lap_number = _number(lap.get("LapNumber"))
+        if lap_number is None:
+            continue
+        accuracy = lap.get("IsAccurate")
+        track_status = lap.get("TrackStatus")
+        driver = lap.get("Driver")
+        result.append({
+            "lap": int(lap_number),
+            "seconds": _seconds(lap.get("LapTime")),
+            "driver": None if _missing(driver) else str(driver),
+            "compound": None if _missing(lap.get("Compound")) else str(lap.get("Compound")),
+            "tyre_life": _number(lap.get("TyreLife")),
+            "stint": _number(lap.get("Stint")),
+            "pit_in": not _missing(lap.get("PitInTime")),
+            "pit_out": not _missing(lap.get("PitOutTime")),
+            "is_accurate": None if _missing(accuracy) else bool(accuracy),
+            "track_status": None if _missing(track_status) else str(track_status),
+        })
+    return result
+
+
 @lru_cache(maxsize=20)
 def events(year: int) -> list[dict]:
     if fastf1 is None:

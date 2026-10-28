@@ -5,7 +5,7 @@ from fastapi.concurrency import run_in_threadpool
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field, field_validator, model_validator
 
-from . import data
+from . import data, evaluation
 from .simulation import DEFAULT_BASELINE_PACE_SECONDS, DEFAULT_DEGRADATION_SECONDS_PER_LAP, DEFAULT_PIT_LOSS_SECONDS, Strategy, optimise_with_metadata, simulate
 
 app = FastAPI(title="Apexion API", version="0.1.0", description="Historical F1 data and transparent strategy simulation")
@@ -169,6 +169,27 @@ class StrategyBaselineResponse(BaseModel):
     data_source: str
 
 
+class ModelEvaluationReport(BaseModel):
+    status: str
+    model_version: str
+    prediction_target: str
+    split_methodology: str
+    lap_filter: str
+    data_source: str
+    training_races: list[str]
+    test_races: list[str]
+    training_metadata: dict[str, object]
+    metrics: dict[str, float | int] | None
+    baseline_metrics: dict[str, float | int] | None
+    per_race_metrics: list[dict[str, object]]
+    exclusions: dict[str, int]
+    advanced_model: dict[str, object]
+    limitations: list[str]
+    message: str | None = None
+    baseline_comparison: dict[str, object] | None = None
+    generated_at: str | None = None
+
+
 class TelemetryCompareRequest(BaseModel):
     year: int = Field(ge=2018)
     event: str = Field(min_length=1, max_length=100)
@@ -195,6 +216,12 @@ def _source_error(feature: str, exc: Exception) -> str:
 @app.get("/api/health")
 def health():
     return {"status": "ok", "data_provider": "FastF1" if data.fastf1 else "unavailable"}
+
+
+@app.get("/api/models/metrics", response_model=ModelEvaluationReport)
+def get_model_metrics():
+    """Return only a saved, actually executed evaluation report."""
+    return evaluation.load_report()
 
 
 @app.get("/api/seasons")

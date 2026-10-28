@@ -11,6 +11,17 @@ def test_health_endpoint():
     assert result["data_provider"] == "FastF1"
 
 
+def test_model_metrics_endpoint_returns_saved_report_without_claiming_unrun_results(monkeypatch):
+    from app.evaluation import unavailable_report
+
+    monkeypatch.setattr("app.evaluation.load_report", unavailable_report)
+    response = client.get("/api/models/metrics")
+    assert response.status_code == 200
+    assert response.json()["status"] == "not_run"
+    assert response.json()["metrics"] is None
+    assert response.json()["advanced_model"]["status"] == "not_evaluated"
+
+
 def test_seasons_endpoint_tracks_current_supported_season():
     from datetime import datetime
 
