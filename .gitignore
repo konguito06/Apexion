@@ -6,4 +6,6 @@ node_modules/
 frontend/dist/
 frontend/*.tsbuildinfo
 .env
+.env.*
+!.env.example
 .pytest_cache/
