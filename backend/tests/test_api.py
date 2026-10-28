@@ -47,22 +47,42 @@ def test_events_endpoint_explains_unavailable_source(monkeypatch):
 
 
 def test_simulation_endpoint():
-    response = client.post("/api/simulations", json={"race_laps": 10, "compounds": ["MEDIUM", "HARD"], "pit_laps": [5]})
+    response = client.post("/api/simulations", json={"race_laps": 10, "compounds": ["MEDIUM", "HARD"], "pit_laps": [5], "baseline_pace_seconds": 92, "degradation_seconds_per_lap": 0.1, "year": 2024, "event": "Example GP", "session": "R", "driver": "AAA"})
     assert response.status_code == 200
-    assert response.json()["pit_stops"] == 1
-    assert response.json()["strategy"]["pit_laps"] == [5]
+    result = response.json()
+    assert result["pit_stops"] == 1
+    assert result["strategy"]["pit_laps"] == [5]
+    assert len(result["lap_curve"]) == 10
+    assert result["stints"][0]["laps"] == 5
+    assert result["assumptions"]["data_context"] == {"year": 2024, "event": "Example GP", "session": "R", "driver": "AAA"}
+    assert result["delta_vs_baseline_seconds"] == result["total_seconds"] - result["baseline_total_seconds"]
+
+
+def test_simulation_endpoint_rejects_pit_lap_at_finish_and_unordered_stops():
+    at_finish = client.post("/api/simulations", json={"race_laps": 10, "compounds": ["SOFT", "HARD"], "pit_laps": [10]})
+    unordered = client.post("/api/simulations", json={"race_laps": 10, "compounds": ["SOFT", "HARD", "MEDIUM"], "pit_laps": [6, 3]})
+    assert at_finish.status_code == 422
+    assert unordered.status_code == 422
 
 
 def test_invalid_strategy_has_useful_error():
     response = client.post("/api/simulations", json={"race_laps": 10, "compounds": ["SOFT"], "pit_laps": [5]})
     assert response.status_code == 422
-    assert "compound" in response.json()["detail"].lower()
+    assert "compound" in str(response.json()["detail"]).lower()
 
 
 def test_optimisation_endpoint():
     response = client.post("/api/strategies/optimise", json={"race_laps": 20, "max_stops": 1})
     assert response.status_code == 200
     assert response.json()["results"]
+
+
+def test_optimiser_accepts_same_model_parameters_and_context_as_manual_simulation():
+    response = client.post("/api/strategies/optimise", json={"race_laps": 20, "max_stops": 1, "baseline_pace_seconds": 92, "degradation_seconds_per_lap": .1, "baseline_pace_source": "fixture fit", "degradation_source": "fixture fit", "year": 2024, "event": "Example GP", "session": "R", "driver": "AAA"})
+    assert response.status_code == 200
+    for candidate in response.json()["results"]:
+        assert candidate["assumptions"]["baseline_pace_seconds"] == 92
+        assert candidate["assumptions"]["data_context"]["driver"] == "AAA"
 
 
 def test_optimiser_reports_candidate_space_and_supports_three_stops():
@@ -97,3 +117,22 @@ def test_unavailable_fastf1_session_explains_optional_auth(monkeypatch):
     response = client.get("/api/sessions/2024/Example%20GP/summary")
     assert response.status_code == 503
     assert "F1_USERNAME and F1_PASSWORD" in response.json()["detail"]
+
+
+def test_strategy_baseline_endpoint_returns_fit_provenance(monkeypatch):
+    monkeypatch.setattr("app.data.strategy_baseline", lambda year, event, driver, session: {
+        "baseline_pace_seconds": 91.25,
+        "degradation_seconds_per_lap": .08,
+        "baseline_pace_source": "fixture historical median",
+        "degradation_source": "fixture within-stint fit",
+        "representative_laps": 18,
+        "degradation_pair_slopes": 25,
+        "fit_status": "historical pace and degradation fit",
+        "limitations": "Descriptive only.",
+        "year": year, "event": event, "session": session, "driver": driver,
+        "data_source": "FastF1 representative laps",
+    })
+    response = client.get("/api/sessions/2024/Example%20GP/drivers/AAA/strategy-baseline?session=R")
+    assert response.status_code == 200
+    assert response.json()["baseline_pace_seconds"] == 91.25
+    assert response.json()["data_source"] == "FastF1 representative laps"

@@ -298,3 +298,18 @@ def compare_telemetry(year: int, event: str, first_driver: str, first_lap: int, 
             first_sector, second_sector = first_lap_data[sector], second_lap_data[sector]
             sector_deltas[sector] = round(second_sector - first_sector, 3) if first_sector is not None and second_sector is not None else None
     return {**result, "lap_time_delta_seconds": lap_delta, "sector_time_deltas_seconds": sector_deltas}
+
+
+def strategy_baseline(year: int, event: str, driver: str, session_name: str = "R") -> dict:
+    """Estimate simulation parameters from one driver's selected session."""
+    from .simulation import estimate_parameters
+
+    estimate = estimate_parameters(driver_laps(year, event, driver, session_name))
+    return {
+        **estimate,
+        "year": year,
+        "event": event,
+        "session": session_name,
+        "driver": driver,
+        "data_source": "FastF1 representative laps" if estimate["representative_laps"] else "Illustrative assumptions; no representative FastF1 laps available",
+    }
