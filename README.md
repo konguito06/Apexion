@@ -1,23 +1,26 @@
 # Apexion
 
-**Find the optimal line.** Apexion is an independent F1 race analysis and strategy simulation MVP. It combines on-demand historical data from [FastF1](https://docs.fastf1.dev/) with an explicitly illustrative, deterministic pit-stop model. It is an educational project, not team strategy software.
+**Find the optimal line.** Apexion is an independent F1 race analysis and strategy simulation application. It combines public historical session data from [FastF1](https://docs.fastf1.dev/) with a deterministic, explicitly illustrative strategy model. It is an educational portfolio project, not a recreation of a team's proprietary tools.
 
-## Features
+## What works
 
-- Dark, responsive interface with Overview, Race Explorer, Driver Analysis, Telemetry Lab, Strategy Simulator, Strategy Comparison, Model Insights and Methodology views.
-- FastF1 event schedule, session summary, lap times and car telemetry endpoints. FastF1 caches downloaded session data under `backend/.cache/fastf1`.
-- Deterministic strategy estimate with compound adjustments, tyre age degradation and configured pit loss; validation rejects malformed strategies.
-- Bounded search over a small, documented set of compound sequences and pit windows.
-- Local session strategy comparison with CSV export.
-- Backend unit and API tests that need no live data downloads.
+- Responsive workspace with Overview, Race Explorer, Driver Analysis, Telemetry Lab, Strategy Simulator, Strategy Comparison, Model Insights and Methodology sections.
+- Season, event and available-session selection from the FastF1 schedule.
+- Session summary, historical classification, driver laps, sector times, tyre compounds, pit laps and tyre stint summaries when present in source data.
+- Lap pace plot, valid-lap filtering, median representative pace, best valid lap, interquartile range and median sector times.
+- Actual telemetry channels returned for a selected lap, plus two-lap/driver channel comparisons interpolated to a shared 0–100% lap-distance axis.
+- Deterministic, user-configurable strategy evaluation with tyre compounds, pit laps, race laps, pace, tyre-age degradation and pit loss.
+- Bounded optimisation through three stops with an explicit candidate count and search description.
+- Named strategy scenarios persisted in browser local storage, baseline deltas, duplicate/remove actions and CSV export.
+- FastF1 cache, graceful source errors, synthetic-data unit tests and a GitHub Actions workflow.
 
-Historical-data pages require internet access and the selected event/session data to be available through FastF1. Errors are surfaced in the interface. The overview chart uses a clearly labelled synthetic sample series only when no historical lap series has loaded; it is never labelled as real telemetry. Telemetry charts render only returned channels.
+Data coverage depends on the historical session and available channels. An unavailable request shows an error. The overview uses a small labelled synthetic sample pace series only when historical laps have not loaded; sample values are never presented as measurements.
 
 ## Run locally
 
 Requirements: Python 3.10+ and Node.js 20+.
 
-### Backend
+### Backend terminal
 
 ```bash
 cd backend
@@ -27,11 +30,9 @@ python -m pip install -r requirements.txt
 uvicorn app.main:app --reload --port 8000
 ```
 
-API docs: <http://localhost:8000/docs>. FastF1 cache is written to `backend/.cache/fastf1` (ignored by Git). Session downloads may take time on first load.
+FastAPI docs are at <http://localhost:8000/docs>. FastF1 data is cached in `backend/.cache/fastf1`. The cache is created automatically and is ignored by Git. First-time schedule or session downloads require internet and can take time.
 
-### Frontend
-
-In another terminal, from the repository root:
+### Frontend terminal
 
 ```bash
 cd frontend
@@ -39,7 +40,17 @@ npm install
 npm run dev
 ```
 
-Open <http://localhost:5173>. The frontend uses `http://localhost:8000` by default. Set `VITE_API_URL` at build time to point to a different API origin. Development CORS currently allows `http://localhost:5173`; update `backend/app/main.py` for another origin before deployment.
+Open <http://localhost:5173>. Vite proxies `/api` to the local backend. To use another backend origin, set `VITE_API_URL` at frontend build time.
+
+## Run with Docker Compose
+
+With Docker and the Compose plugin installed:
+
+```bash
+docker compose up --build
+```
+
+Open <http://localhost:8080>. The backend API docs remain at <http://localhost:8000/docs>. Compose stores FastF1 cache data in the `fastf1-cache` volume. Stop services with `docker compose down`; the named cache volume remains available.
 
 ## Verify
 
@@ -51,27 +62,41 @@ npm test
 npm run build
 ```
 
-Tests use synthetic inputs and do not download race data.
+Tests use synthetic fixtures and do not need internet or a FastF1 download.
 
-## Simulation assumptions and limitations
+## Data and metric definitions
 
-For each lap, the model calculates `baseline pace + compound offset + tyre age × degradation`. Tyre age resets after each stop, and each stop adds fixed pit loss. Defaults are 90 seconds baseline pace, SOFT/MEDIUM/HARD offsets of 0.00/0.35/0.75 seconds per lap, 0.075 seconds per tyre-age lap, and 22 seconds per pit stop. These are illustrative defaults, not fitted to a specific circuit, season, or car. Configure a different baseline pace or loss through the API. Results should not be treated as predictions of a real race.
+- Classification, lap times, sector times, tyre compounds, stint ids and available car channels are source observations from FastF1.
+- `representative lap` excludes missing lap times and laps with a pit-in or pit-out marker. It does not adjust for traffic, safety cars, fuel, weather, track evolution or tire condition beyond reported tyre age.
+- Driver pace uses the median of representative laps. Variability uses the interquartile range (75th percentile minus 25th percentile). Best valid lap is shown separately and is not treated as normal pace. Sector medians use the representative-lap set, omitting missing sector values.
+- Paired telemetry is interpolated to a shared normalized 0–100% lap-distance coordinate. This is a relative lap coordinate, not absolute circuit distance. Only channels present in both traces are shown.
+- Missing data remains missing. Telemetry channels are not fabricated.
 
-The optimiser enumerates a bounded search of fixed compound patterns (at most three stops and 100 laps accepted) and pit windows. It does not search every legal strategy or encode season-specific regulations. Neither simulation nor optimisation models traffic, weather evolution, neutralisations, overtaking, undercut/overcut interactions, or competitor response. No machine-learning accuracy is claimed.
+## Strategy model
 
-FastF1 publicly exposes historical data with varying coverage. Some sessions, drivers, laps or telemetry channels may be unavailable; those requests return an explanatory error or omit unavailable channels rather than invent values.
+The lap calculation is:
+
+```text
+baseline pace + compound offset + tyre age × degradation per lap
+```
+
+Tyre age resets at a stop; every stop adds a fixed pit loss. Defaults are 90 seconds baseline pace, SOFT/MEDIUM/HARD offsets of 0.00/0.35/0.75 seconds per lap, 0.075 seconds per tyre-age lap, and 22 seconds per pit stop. Users can change pace, degradation and pit loss in the simulator. These assumptions are illustrative and are not fitted to a circuit, car, season or driver. Outputs are simulations, not race forecasts.
+
+The optimiser searches compound sequences across a deterministic, spaced pit-lap grid, requires four-lap minimum stints and supports up to three stops. It reports how many candidates it evaluated. It does not search every possible strategy, apply season-specific tyre regulations, or model traffic, weather evolution, neutralisations, overtaking or rival responses. No machine-learning model or accuracy claim is included.
 
 ## Architecture
 
 ```text
-React + TypeScript + Recharts (Vite)
-              │ HTTP / JSON
-              ▼
-FastAPI + Pydantic ── deterministic simulation / bounded optimiser
-              │
-              └── FastF1 session cache and public historical API
+React + TypeScript + Recharts (Vite / Nginx)
+                  │ HTTP JSON (/api)
+                  ▼
+FastAPI + Pydantic ── strategy simulation / bounded optimiser
+                  │
+                  └── FastF1 schedule, session loader and local cache
 ```
 
-## Current scope
+The API and data service are intentionally small; routes handle validation and error responses while calculations and FastF1 normalization live in service modules. CORS origins can be configured with `APEXION_CORS_ORIGINS` (comma-separated). The default allows the local Vite and Compose origins.
 
-This MVP supports schedule discovery, race summary and driver laps, one-driver telemetry-by-lap exploration, manual simulation, bounded strategy search, and local comparison/export. Historical finishing classification, sector-based analysis, paired telemetry comparisons, persistent comparison storage, account support, regulation-aware optimisation, and calibrated model fitting are not implemented yet. There is no production deployment configuration or claim of deployment.
+## Known limitations
+
+This version does not implement safety-car scenarios, weather simulation, regulation-aware strategy constraints, calibrated pace/degradation fitting, trained machine learning, a circuit map, steering telemetry, authentication, shared/cloud scenario storage or a public deployment. Historical finishing classifications, sectors, stints, and telemetry are shown only where the FastF1 session provides them. Scenarios are saved only in the current browser.
