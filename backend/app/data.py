@@ -44,6 +44,12 @@ def _load(year: int, event: str, session_name: str) -> Any:
         raise RuntimeError("FastF1 is not installed")
     session = fastf1.get_session(year, event, session_name)
     session.load(telemetry=True, laps=True, weather=False, messages=False)
+    laps = getattr(session, "laps", None)
+    if laps is None or laps.empty or "LapTime" not in laps or not laps["LapTime"].notna().any():
+        raise RuntimeError(
+            "FastF1 returned no lap data for this session. Check upstream availability; "
+            "the current F1 timing feed may require F1_USERNAME and F1_PASSWORD."
+        )
     return session
 
 
@@ -91,13 +97,22 @@ def _classification(session: Any) -> list[dict]:
 def session_summary(year: int, event: str, session_name: str = "R") -> dict:
     session = _load(year, event, session_name)
     laps = session.laps
+    try:
+        session_date = str(session.date)
+    except Exception as exc:
+        if "not been loaded yet" in str(exc).lower():
+            raise RuntimeError(
+                "FastF1 could not load session metadata or timing data. Check the upstream feed; "
+                "the current F1 timing feed may require F1_USERNAME and F1_PASSWORD."
+            ) from exc
+        raise
     compounds = sorted(str(value) for value in laps["Compound"].dropna().unique()) if "Compound" in laps else []
     pit_stops = int(laps["PitInTime"].notna().sum()) if "PitInTime" in laps else 0
     max_lap = int(laps["LapNumber"].max()) if len(laps) and "LapNumber" in laps else 0
     event_name = str(getattr(getattr(session, "event", {}), "EventName", event))
     return {
         "year": year, "event": event_name, "session": session_name,
-        "date": str(session.date), "drivers": sorted(str(x) for x in laps["Driver"].dropna().unique()),
+        "date": session_date, "drivers": sorted(str(x) for x in laps["Driver"].dropna().unique()),
         "race_laps": max_lap, "lap_observations": int(len(laps)), "pit_stops": pit_stops,
         "compounds": compounds, "classification": _classification(session),
         "data_source": "FastF1 historical data", "status": "loaded",

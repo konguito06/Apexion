@@ -49,3 +49,13 @@ def test_telemetry_compare_returns_distance_aligned_data(monkeypatch):
     assert response.status_code == 200
     assert response.json()["points"][0]["distance_percent"] == 0
     assert response.json()["coordinate"] == "lap distance (%)"
+
+
+def test_unavailable_fastf1_session_explains_optional_auth(monkeypatch):
+    def unavailable(*_args, **_kwargs):
+        raise RuntimeError("The data you are trying to access has not been loaded yet. See Session.load")
+
+    monkeypatch.setattr("app.data.session_summary", unavailable)
+    response = client.get("/api/sessions/2024/Example%20GP/summary")
+    assert response.status_code == 503
+    assert "F1_USERNAME and F1_PASSWORD" in response.json()["detail"]

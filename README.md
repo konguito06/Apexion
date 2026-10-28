@@ -1,20 +1,21 @@
 # Apexion
 
-**Find the optimal line.** Apexion is an independent F1 race analysis and strategy simulation application. It combines public historical session data from [FastF1](https://docs.fastf1.dev/) with a deterministic, explicitly illustrative strategy model. It is an educational portfolio project, not a recreation of a team's proprietary tools.
+**Find the optimal line.** Apexion is an independent F1 race analysis and strategy simulation application. It combines historical session data from [FastF1](https://docs.fastf1.dev/) with a deterministic, explicitly illustrative strategy model. It is an educational portfolio project, not a recreation of a team's proprietary tools.
 
 ## What works
 
 - Responsive workspace with Overview, Race Explorer, Driver Analysis, Telemetry Lab, Strategy Simulator, Strategy Comparison, Model Insights and Methodology sections.
 - Season, event and available-session selection from the FastF1 schedule.
+- Recently opened session links saved in the browser for quick return.
 - Session summary, historical classification, driver laps, sector times, tyre compounds, pit laps and tyre stint summaries when present in source data.
 - Lap pace plot, valid-lap filtering, median representative pace, best valid lap, interquartile range and median sector times.
 - Actual telemetry channels returned for a selected lap, plus two-lap/driver channel comparisons interpolated to a shared 0–100% lap-distance axis.
 - Deterministic, user-configurable strategy evaluation with tyre compounds, pit laps, race laps, pace, tyre-age degradation and pit loss.
 - Bounded optimisation through three stops with an explicit candidate count and search description.
-- Named strategy scenarios persisted in browser local storage, baseline deltas, duplicate/remove actions and CSV export.
+- Named strategy scenarios persisted in browser local storage, editable configuration, baseline deltas, duplicate/remove actions and CSV export.
 - FastF1 cache, graceful source errors, synthetic-data unit tests and a GitHub Actions workflow.
 
-Data coverage depends on the historical session and available channels. An unavailable request shows an error. The overview uses a small labelled synthetic sample pace series only when historical laps have not loaded; sample values are never presented as measurements.
+Data coverage depends on the historical session, upstream availability and available channels. Event schedule integration was verified live; a live 2024 session request in the development environment returned no lap rows without upstream authentication. Apexion reports that state with setup guidance rather than inventing historical measurements. The overview uses a small labelled synthetic sample pace series only when historical laps have not loaded; sample values are never presented as measurements.
 
 ## Run locally
 
@@ -30,7 +31,7 @@ python -m pip install -r requirements.txt
 uvicorn app.main:app --reload --port 8000
 ```
 
-FastAPI docs are at <http://localhost:8000/docs>. FastF1 data is cached in `backend/.cache/fastf1`. The cache is created automatically and is ignored by Git. First-time schedule or session downloads require internet and can take time.
+FastAPI docs are at <http://localhost:8000/docs>. FastF1 data is cached in `backend/.cache/fastf1`. The cache is created automatically and is ignored by Git. Schedule requests require internet. Historical timing availability depends on FastF1 and the upstream feed; some current requests may require an F1 account. If needed, export `F1_USERNAME` and `F1_PASSWORD` in the backend terminal before starting the service. Do not commit credentials.
 
 ### Frontend terminal
 
@@ -50,7 +51,7 @@ With Docker and the Compose plugin installed:
 docker compose up --build
 ```
 
-Open <http://localhost:8080>. The backend API docs remain at <http://localhost:8000/docs>. Compose stores FastF1 cache data in the `fastf1-cache` volume. Stop services with `docker compose down`; the named cache volume remains available.
+Open <http://localhost:8080>. The backend API docs remain at <http://localhost:8000/docs>. Compose stores FastF1 cache data in the `fastf1-cache` volume. If the upstream feed requires credentials, copy `.env.example` to `.env` and add them there. Stop services with `docker compose down`; the named cache volume remains available.
 
 ## Verify
 

@@ -5,6 +5,8 @@ services:
       dockerfile: backend/Dockerfile
     environment:
       APEXION_CORS_ORIGINS: ${APEXION_CORS_ORIGINS:-http://localhost:8080}
+      F1_USERNAME: ${F1_USERNAME:-}
+      F1_PASSWORD: ${F1_PASSWORD:-}
     ports:
       - "8000:8000"
     volumes:

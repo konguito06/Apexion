@@ -45,6 +45,12 @@ class TelemetryCompareRequest(BaseModel):
     session: str = Field(default="R", max_length=20)
 
 
+def _source_error(feature: str, exc: Exception) -> str:
+    if "not been loaded yet" in str(exc).lower() or "datanotloaded" in type(exc).__name__.lower():
+        return f"FastF1 could not load {feature}. Check upstream availability; the current F1 timing feed may require F1_USERNAME and F1_PASSWORD."
+    return f"{feature} unavailable: {exc}"
+
+
 @app.get("/api/health")
 def health():
     return {"status": "ok", "data_provider": "FastF1" if data.fastf1 else "unavailable"}
@@ -69,7 +75,7 @@ def get_drivers(year: int, event: str, session: str = "R"):
         summary = data.session_summary(year, event, session)
         return {"drivers": summary["drivers"], "data_source": summary["data_source"]}
     except Exception as exc:
-        raise HTTPException(503, f"Driver list unavailable: {exc}") from exc
+        raise HTTPException(503, _source_error("driver list", exc)) from exc
 
 
 @app.get("/api/sessions/{year}/{event}/summary")
@@ -77,7 +83,7 @@ def get_summary(year: int, event: str, session: str = "R"):
     try:
         return data.session_summary(year, event, session)
     except Exception as exc:
-        raise HTTPException(503, f"Session data unavailable: {exc}") from exc
+        raise HTTPException(503, _source_error("session data", exc)) from exc
 
 
 @app.get("/api/sessions/{year}/{event}/laps")
@@ -85,7 +91,7 @@ def get_laps(year: int, event: str, driver: str, session: str = "R"):
     try:
         return {"laps": data.driver_laps(year, event, driver, session), "data_source": "FastF1 historical data"}
     except Exception as exc:
-        raise HTTPException(503, f"Lap data unavailable: {exc}") from exc
+        raise HTTPException(503, _source_error("lap data", exc)) from exc
 
 
 @app.get("/api/sessions/{year}/{event}/drivers/{driver}/analysis")
@@ -93,7 +99,7 @@ def get_driver_analysis(year: int, event: str, driver: str, session: str = "R"):
     try:
         return data.driver_analysis(year, event, driver, session)
     except Exception as exc:
-        raise HTTPException(503, f"Driver analysis unavailable: {exc}") from exc
+        raise HTTPException(503, _source_error("driver analysis", exc)) from exc
 
 
 @app.get("/api/sessions/{year}/{event}/telemetry")
@@ -106,7 +112,7 @@ def get_telemetry(year: int, event: str, driver: str, lap: int = Query(ge=1), se
     except HTTPException:
         raise
     except Exception as exc:
-        raise HTTPException(503, f"Telemetry unavailable: {exc}") from exc
+        raise HTTPException(503, _source_error("telemetry", exc)) from exc
 
 
 @app.post("/api/sessions/telemetry/compare")
@@ -119,7 +125,7 @@ def compare_telemetry(request: TelemetryCompareRequest):
     except HTTPException:
         raise
     except Exception as exc:
-        raise HTTPException(503, f"Telemetry comparison unavailable: {exc}") from exc
+        raise HTTPException(503, _source_error("telemetry comparison", exc)) from exc
 
 
 @app.post("/api/simulations")
