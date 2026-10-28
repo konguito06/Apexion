@@ -17,6 +17,26 @@ function provideResizeObserver() {
 }
 
 describe('Apexion navigation', () => {
+  it('exposes the active page and supports the mobile navigation with Escape', async () => {
+    provideResizeObserver();
+    vi.stubGlobal('fetch', vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input);
+      const payload = url.endsWith('/api/seasons') ? { seasons: [2024] }
+        : url.endsWith('/api/health') ? { status: 'ok' }
+          : url.includes('/api/events') ? { events: [] } : {};
+      return new Response(JSON.stringify(payload), { status: 200 });
+    }));
+    render(<App />);
+    expect((await screen.findByRole('button', { name: 'Overview' })).getAttribute('aria-current')).toBe('page');
+    const menu = screen.getByRole('button', { name: 'Open navigation' });
+    fireEvent.click(menu);
+    expect(screen.getByRole('button', { name: 'Close navigation' }).getAttribute('aria-expanded')).toBe('true');
+    fireEvent.keyDown(document, { key: 'Escape' });
+    expect(screen.getByRole('button', { name: 'Open navigation' }).getAttribute('aria-expanded')).toBe('false');
+    fireEvent.click(screen.getByRole('button', { name: 'Race Explorer' }));
+    expect(screen.getByRole('button', { name: 'Race Explorer' }).getAttribute('aria-current')).toBe('page');
+  });
+
   it('shows a non-blocking loading status while FastF1 event choices are being retrieved', async () => {
     provideResizeObserver();
     let finishSchedule!: (response: Response) => void;
