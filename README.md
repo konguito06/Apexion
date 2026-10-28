@@ -17,31 +17,25 @@
 
 Data coverage depends on the historical session, upstream availability and available channels. Event schedule integration was verified live; a live 2024 session request in the development environment returned no lap rows without upstream authentication. Apexion reports that state with setup guidance rather than inventing historical measurements. The overview uses a small labelled synthetic sample pace series only when historical laps have not loaded; sample values are never presented as measurements.
 
-## Run locally
+## Run locally with one command
 
 Requirements: Python 3.10+ and Node.js 20+.
 
-### Backend terminal
+From the project root, install both frontend and backend dependencies once:
 
 ```bash
-cd backend
-python3 -m venv .venv
-source .venv/bin/activate
-python -m pip install -r requirements.txt
-uvicorn app.main:app --reload --port 8000
+npm run setup
 ```
 
-FastAPI docs are at <http://localhost:8000/docs>. FastF1 data is cached in `backend/.cache/fastf1`. The cache is created automatically and is ignored by Git. Schedule requests require internet. Historical timing availability depends on FastF1 and the upstream feed; some current requests may require an F1 account. If needed, export `F1_USERNAME` and `F1_PASSWORD` in the backend terminal before starting the service. Do not commit credentials.
-
-### Frontend terminal
+Then launch the frontend and backend together:
 
 ```bash
-cd frontend
-npm install
 npm run dev
 ```
 
-Open <http://localhost:5173>. Vite proxies `/api` to the local backend. To use another backend origin, set `VITE_API_URL` at frontend build time.
+Open <http://localhost:5173>. Both services log in the same terminal; press **Ctrl+C** to stop them together. The frontend proxies `/api` to FastAPI on port 8000. API docs are at <http://localhost:8000/docs>. The launcher reports missing dependencies and unexpected service exits, including likely port conflicts.
+
+FastF1 data is cached in `backend/.cache/fastf1`, created automatically and ignored by Git. Schedule requests require internet. Historical timing availability depends on FastF1 and its upstream feed; some current requests may require an F1 account. If needed, export `F1_USERNAME` and `F1_PASSWORD` in the terminal before `npm run dev`. Do not commit credentials. To use another backend origin, set `VITE_API_URL` at frontend build time.
 
 ## Run with Docker Compose
 
