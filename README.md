@@ -88,6 +88,23 @@ The optimiser uses the same `simulate()` implementation as manual strategies. Ca
 
 Season-specific tyre-use regulations are not applied because Apexion has no verified season rule dataset. Users should treat candidates as mathematically strong within this model, not necessarily regulation-compliant. The comparison page only calculates deltas between scenarios from the same race, race distance, baseline pace, degradation, pit loss and compound-offset model. Incompatible configurations remain saved and can be inspected by selecting that scenario as the comparison group. Optimiser candidates can be added directly to comparison; manual results can be saved there as well. The comparison can be exported to CSV. No machine-learning model or accuracy claim is included.
 
+## Model evaluation
+
+Generate a reproducible historical evaluation report from FastF1 race timing data:
+
+```bash
+cd backend
+.venv/bin/python -m app.evaluation --years 2022 2023 2024 --max-events-per-season 6
+```
+
+The command retrieves the chronologically earliest six race events per requested season (with lap timing only; it does not download telemetry), caches FastF1 data, records skipped sessions, and writes `backend/artifacts/model_evaluation.json`. Use `--max-events-per-season 0` to attempt every race in each season or `--output PATH` to choose another report path. `/api/models/metrics` and the Model Insights page read that report. Without a report, the app states “not run” and shows no metrics.
+
+The target is each driver's eligible green-flag lap time after three earlier eligible laps from the same held-out race have calibrated the race-specific pace intercept. Those first three laps are calibration only and are not scored. Unique races are ordered by season and round; the last 20% are held out as test races. All laps from those race IDs are excluded from the training-race tyre-degradation fit. The model uses a median pairwise within-stint, same-compound tyre-age slope fitted only on training races, plus the simulator's fixed compound offsets. The comparator predicts a constant lap time equal to the median of the same three calibration laps.
+
+Eligibility requires a finite positive lap time, known dry compound, tyre life and stint, and `TrackStatus == 1`. Pit-in/out laps, `IsAccurate == False`, unknown/non-green track status, missing target times, unsupported compounds and missing tyre-age/stint fields are excluded. Missing accuracy flags are retained; exclusions are counted in the report. The method does not adjust for fuel, traffic, weather, car/driver changes or other residual race effects. MAE, RMSE, signed bias, median and tail absolute errors are calculated on scored held-out laps, with per-race metrics and a simple baseline comparison. The result is conditional later-lap evaluation, not cold-start or future-race validation.
+
+No advanced machine-learning estimator is currently trained. The Model Insights page reports that decision explicitly; a more complex model should be considered only after this race-held-out baseline and its feature/validation limits justify it. Re-run the command to reproduce the report. The output records the model version, split, training/test race IDs, filters, training fit support, retrieval successes/failures and generation time.
+
 ## Architecture
 
 ```text
