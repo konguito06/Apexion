@@ -89,7 +89,13 @@ def test_optimiser_reports_candidate_space_and_supports_three_stops():
     response = client.post("/api/strategies/optimise", json={"race_laps": 30, "max_stops": 3})
     assert response.status_code == 200
     assert response.json()["evaluated"] > len(response.json()["results"])
-    assert "four-lap" in response.json()["search_description"]
+    result = response.json()
+    assert result["minimum_stint_laps"] == 4
+    assert result["candidate_space_size"] == result["evaluated"]
+    assert result["evaluated"] <= result["candidate_limit"] == 5000
+    assert result["max_stops"] == 3
+    assert "minimum 4-lap stints" in result["search_description"]
+    assert "No season-specific tyre regulation constraints" in result["search_description"]
 
 
 def test_telemetry_compare_returns_distance_aligned_data(monkeypatch):

@@ -16,6 +16,8 @@ DEFAULT_DEGRADATION_SECONDS_PER_LAP = 0.075
 DEFAULT_PIT_LOSS_SECONDS = 22.0
 COMPOUNDS = {"SOFT": 0.0, "MEDIUM": 0.35, "HARD": 0.75}
 MAX_RACE_LAPS = 100
+MAX_OPTIMISER_CANDIDATES = 5_000
+MIN_OPTIMISER_STINT_LAPS = 4
 
 
 @dataclass(frozen=True)
@@ -265,6 +267,60 @@ def optimise(race_laps: int, pit_loss_seconds: float = DEFAULT_PIT_LOSS_SECONDS,
     return optimise_with_metadata(race_laps, pit_loss_seconds, max_stops, baseline_pace_seconds, degradation_seconds_per_lap)["results"]
 
 
+def generate_candidate_strategies(
+    race_laps: int,
+    max_stops: int = 2,
+    minimum_stint_laps: int = MIN_OPTIMISER_STINT_LAPS,
+    max_candidates: int = MAX_OPTIMISER_CANDIDATES,
+) -> dict[str, Any]:
+    """Build a deterministic compound/pit grid under a strict candidate cap.
+
+    When the full one-lap pit grid would exceed the cap, the spacing is
+    increased until the generated compound-sequence space fits. Every returned
+    pit schedule is checked for ordered laps and positive minimum stint length.
+    """
+    if not isinstance(race_laps, int) or isinstance(race_laps, bool) or not 1 <= race_laps <= MAX_RACE_LAPS:
+        raise ValueError(f"Race laps must be between 1 and {MAX_RACE_LAPS}")
+    if not isinstance(max_stops, int) or isinstance(max_stops, bool) or not 0 <= max_stops <= 3:
+        raise ValueError("Maximum stops must be between 0 and 3")
+    if not isinstance(minimum_stint_laps, int) or isinstance(minimum_stint_laps, bool) or minimum_stint_laps < 1:
+        raise ValueError("Minimum stint length must be a positive integer")
+    if not isinstance(max_candidates, int) or isinstance(max_candidates, bool) or not len(COMPOUNDS) <= max_candidates <= MAX_OPTIMISER_CANDIDATES:
+        raise ValueError(f"Candidate limit must be between {len(COMPOUNDS)} and {MAX_OPTIMISER_CANDIDATES}")
+
+    def schedules_for_step(step: int) -> list[list[tuple[int, ...]]]:
+        by_stops: list[list[tuple[int, ...]]] = [[()]]
+        options = range(minimum_stint_laps, race_laps - minimum_stint_laps + 1, step)
+        for stops in range(1, max_stops + 1):
+            by_stops.append([
+                pits for pits in combinations(options, stops)
+                if all(end - start >= minimum_stint_laps for start, end in zip((0, *pits), (*pits, race_laps)))
+            ])
+        return by_stops
+
+    grid_step = max(1, race_laps // 15)
+    while True:
+        schedules = schedules_for_step(grid_step)
+        count = sum(len(pits) * len(COMPOUNDS) ** (stops + 1) for stops, pits in enumerate(schedules))
+        if count <= max_candidates or grid_step >= race_laps:
+            break
+        grid_step += 1
+
+    candidates = []
+    for stops, schedules in enumerate(schedules):
+        for pits in schedules:
+            for compounds in product(sorted(COMPOUNDS), repeat=stops + 1):
+                candidates.append({"pit_laps": list(pits), "compounds": list(compounds)})
+    return {
+        "candidates": candidates,
+        "candidate_space_size": len(candidates),
+        "pit_lap_grid_step": grid_step,
+        "minimum_stint_laps": minimum_stint_laps,
+        "candidate_limit": max_candidates,
+        "full_pit_lap_grid": grid_step == 1,
+    }
+
+
 def optimise_with_metadata(
     race_laps: int,
     pit_loss_seconds: float = DEFAULT_PIT_LOSS_SECONDS,
@@ -283,31 +339,44 @@ def optimise_with_metadata(
         raise ValueError("Invalid optimisation bounds or non-finite model parameters")
     if pit_loss_seconds < 0 or baseline_pace_seconds <= 0 or degradation_seconds_per_lap < 0:
         raise ValueError("Optimisation pace must be positive and losses/degradation cannot be negative")
+    search = generate_candidate_strategies(race_laps, max_stops)
     candidates = []
-    evaluated = 0
-    for stops in range(max_stops + 1):
-        if stops == 0:
-            pit_schedules = [()]
-        else:
-            # A deterministic candidate grid, not a claim of global optimality.
-            step = max(1, race_laps // 15)
-            pit_options = range(4, race_laps - 3, step)
-            pit_schedules = [pit for pit in combinations(pit_options, stops)
-                             if all(b - a >= 4 for a, b in zip((0, *pit), (*pit, race_laps)))]
-        for pits in pit_schedules:
-            for compounds in product(sorted(COMPOUNDS), repeat=stops + 1):
-                evaluated += 1
-                candidates.append(simulate(Strategy(
-                    race_laps=race_laps, compounds=list(compounds), pit_laps=list(pits),
-                    baseline_pace_seconds=baseline_pace_seconds,
-                    pit_loss_seconds=pit_loss_seconds,
-                    degradation_seconds_per_lap=degradation_seconds_per_lap,
-                    baseline_pace_source=baseline_pace_source,
-                    degradation_source=degradation_source,
-                    year=year, event=event, session=session, driver=driver,
-                )))
+    for candidate in search["candidates"]:
+        strategy = Strategy(
+            race_laps=race_laps,
+            compounds=candidate["compounds"],
+            pit_laps=candidate["pit_laps"],
+            baseline_pace_seconds=baseline_pace_seconds,
+            pit_loss_seconds=pit_loss_seconds,
+            degradation_seconds_per_lap=degradation_seconds_per_lap,
+            baseline_pace_source=baseline_pace_source,
+            degradation_source=degradation_source,
+            year=year, event=event, session=session, driver=driver,
+        )
+        strategy.validate()
+        candidates.append(simulate(strategy))
+    evaluated = len(candidates)
+    candidates.sort(key=lambda item: (
+        item["total_seconds"], item["pit_stops"],
+        tuple(item["strategy"]["pit_laps"]), tuple(item["strategy"]["compounds"]),
+    ))
+    max_feasible_stops = max(0, race_laps // MIN_OPTIMISER_STINT_LAPS - 1)
+    exhaustive = search["full_pit_lap_grid"] and max_stops >= max_feasible_stops
+    search_description = (
+        f"Evaluated {evaluated} candidates with a deterministic pit-lap grid every {search['pit_lap_grid_step']} lap(s), "
+        f"minimum {search['minimum_stint_laps']}-lap stints, up to {max_stops} stops, and a hard limit of {search['candidate_limit']} candidates. "
+        + ("The bounded candidate space was exhaustively enumerated." if exhaustive else "This is a bounded grid search, not a global optimum; other pit laps and/or stop counts were not searched.")
+        + " No season-specific tyre regulation constraints were applied because this application has no verified regulation dataset."
+    )
     return {
-        "results": sorted(candidates, key=lambda item: item["total_seconds"])[:5],
+        "results": candidates[:5],
         "evaluated": evaluated,
-        "search_description": "All compound sequences over a deterministic spaced pit-lap grid; minimum four-lap stints; at most three stops. Every candidate uses the same deterministic simulation engine as manual evaluation.",
+        "candidate_space_size": search["candidate_space_size"],
+        "candidate_limit": search["candidate_limit"],
+        "pit_lap_grid_step": search["pit_lap_grid_step"],
+        "minimum_stint_laps": search["minimum_stint_laps"],
+        "max_stops": max_stops,
+        "exhaustive_within_constraints": exhaustive,
+        "regulatory_constraints_applied": [],
+        "search_description": search_description,
     }

@@ -1,6 +1,6 @@
 import pytest
 
-from app.simulation import Strategy, estimate_parameters, optimise, simulate, stint_boundaries, tyre_age
+from app.simulation import MAX_OPTIMISER_CANDIDATES, Strategy, estimate_parameters, generate_candidate_strategies, optimise, optimise_with_metadata, simulate, stint_boundaries, tyre_age
 
 
 def test_stint_boundaries_and_tyre_age_are_one_based_laps_with_zero_based_age():
@@ -115,3 +115,47 @@ def test_optimiser_uses_same_model_inputs_and_returns_sorted_valid_candidates():
     assert results == sorted(results, key=lambda item: item["total_seconds"])
     assert all(len(result["stints"]) == result["pit_stops"] + 1 for result in results)
     assert all(result["assumptions"]["baseline_pace_seconds"] == 92 for result in results)
+
+
+def test_candidate_generation_enforces_ordered_pits_and_minimum_stints():
+    generated = generate_candidate_strategies(12, max_stops=2)
+    assert generated["full_pit_lap_grid"] is True
+    assert generated["candidate_space_size"] == len(generated["candidates"])
+    assert all(len(candidate["compounds"]) == len(candidate["pit_laps"]) + 1 for candidate in generated["candidates"])
+    for candidate in generated["candidates"]:
+        boundaries = stint_boundaries(12, candidate["pit_laps"])
+        assert candidate["pit_laps"] == sorted(set(candidate["pit_laps"]))
+        assert all(end - start + 1 >= 4 for start, end in boundaries)
+
+
+def test_candidate_generation_adapts_grid_to_respect_hard_budget():
+    generated = generate_candidate_strategies(100, max_stops=3)
+    assert generated["candidate_limit"] == MAX_OPTIMISER_CANDIDATES
+    assert generated["candidate_space_size"] <= MAX_OPTIMISER_CANDIDATES
+    assert generated["pit_lap_grid_step"] > 1
+    with pytest.raises(ValueError, match="Candidate limit"):
+        generate_candidate_strategies(50, max_candidates=2)
+
+
+def test_optimizer_ranks_candidates_by_shared_simulation_total_and_reports_scope():
+    response = optimise_with_metadata(24, max_stops=2, baseline_pace_seconds=91.2, degradation_seconds_per_lap=.11)
+    results = response["results"]
+    assert results == sorted(results, key=lambda item: (
+        item["total_seconds"], item["pit_stops"], tuple(item["strategy"]["pit_laps"]), tuple(item["strategy"]["compounds"]),
+    ))
+    assert response["candidate_space_size"] == response["evaluated"]
+    assert response["evaluated"] <= response["candidate_limit"]
+    assert all(item["total_seconds"] == simulate(Strategy(
+        race_laps=24,
+        compounds=item["strategy"]["compounds"],
+        pit_laps=item["strategy"]["pit_laps"],
+        baseline_pace_seconds=91.2,
+        degradation_seconds_per_lap=.11,
+    ))["total_seconds"] for item in results)
+    assert "No season-specific tyre regulation constraints" in response["search_description"]
+
+
+@pytest.mark.parametrize("race_laps,max_stops", [(0, 1), (101, 1), (30, 4)])
+def test_candidate_generation_rejects_invalid_bounds(race_laps, max_stops):
+    with pytest.raises(ValueError):
+        generate_candidate_strategies(race_laps, max_stops)

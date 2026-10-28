@@ -1,6 +1,7 @@
 import os
 
 from fastapi import FastAPI, HTTPException, Query
+from fastapi.concurrency import run_in_threadpool
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field, field_validator, model_validator
 
@@ -142,6 +143,13 @@ class SimulationResponse(BaseModel):
 class OptimiseResponse(BaseModel):
     results: list[SimulationResponse]
     evaluated: int
+    candidate_space_size: int
+    candidate_limit: int
+    pit_lap_grid_step: int
+    minimum_stint_laps: int
+    max_stops: int
+    exhaustive_within_constraints: bool
+    regulatory_constraints_applied: list[str]
     search_description: str
 
 
@@ -280,8 +288,8 @@ def run_simulation(request: SimulationRequest):
 
 
 @app.post("/api/strategies/optimise", response_model=OptimiseResponse)
-def run_optimisation(request: OptimiseRequest):
+async def run_optimisation(request: OptimiseRequest):
     try:
-        return optimise_with_metadata(**request.model_dump())
+        return await run_in_threadpool(optimise_with_metadata, **request.model_dump())
     except ValueError as exc:
         raise HTTPException(422, str(exc)) from exc
