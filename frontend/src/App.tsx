@@ -5,7 +5,7 @@ import { request } from './api';
 
 type Section = 'Overview'|'Race Explorer'|'Driver Analysis'|'Telemetry Lab'|'Strategy Simulator'|'Strategy Comparison'|'Model Insights'|'About / Methodology';
 type EventRow = { name: string; round: number };
-type Sim = { total_seconds:number; pit_stops:number; pit_loss_seconds:number; green_flag_seconds:number; stints:{start_lap:number;end_lap:number;laps:number;compound:string;estimated_seconds:number}[]; lap_curve:{lap:number;seconds:number;compound:string}[]; assumptions:Record<string,unknown> };
+type Sim = { total_seconds:number; pit_stops:number; pit_loss_seconds:number; green_flag_seconds:number; stints:{start_lap:number;end_lap:number;laps:number;compound:string;estimated_seconds:number}[]; lap_curve:{lap:number;seconds:number;compound:string}[]; assumptions:Record<string,unknown>; strategy?:{pit_laps:number[];compounds:string[]} };
 const sections: {name:Section; icon:typeof Activity}[] = [
   {name:'Overview',icon:Gauge},{name:'Race Explorer',icon:Flag},{name:'Driver Analysis',icon:Activity},{name:'Telemetry Lab',icon:Radio},{name:'Strategy Simulator',icon:Route},{name:'Strategy Comparison',icon:GitCompareArrows},{name:'Model Insights',icon:Zap},{name:'About / Methodology',icon:BookOpen},
 ];
