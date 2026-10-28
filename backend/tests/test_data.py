@@ -102,6 +102,54 @@ def test_driver_analysis_excludes_pit_lap_and_computes_robust_statistics(monkeyp
     assert result["stints"][1]["compound"] == "HARD"
 
 
+def test_telemetry_alignment_uses_shared_absolute_distance_and_elapsed_time():
+    first = [
+        {"Distance": 0, "Speed": 100, "Throttle": 20, "Brake": 1, "time_seconds": 0},
+        {"Distance": 100, "Speed": 200, "Throttle": 80, "Brake": 0, "time_seconds": 10},
+        {"Distance": 200, "Speed": 300, "Throttle": 100, "Brake": 0, "time_seconds": 20},
+    ]
+    second = [
+        {"Distance": 0, "Speed": 90, "Throttle": 20, "Brake": 1, "time_seconds": 0},
+        {"Distance": 100, "Speed": 180, "Throttle": 80, "Brake": 0, "time_seconds": 12},
+        {"Distance": 200, "Speed": 270, "Throttle": 100, "Brake": 0, "time_seconds": 24},
+    ]
+
+    result = data.align_telemetry_points(first, second)
+
+    assert result["coordinate"] == "distance_m"
+    assert result["channels"] == ["Speed", "Throttle", "Brake"]
+    assert len(result["points"]) == 201
+    assert result["points"][100]["distance_m"] == 100
+    assert result["points"][100]["first_Speed"] == 200
+    assert result["points"][100]["time_delta_seconds"] == 2
+
+
+def test_telemetry_alignment_handles_non_overlapping_or_missing_channels():
+    result = data.align_telemetry_points(
+        [{"Distance": 0, "Speed": 1}, {"Distance": 1, "Speed": 2}],
+        [{"Distance": 2, "Throttle": 10}, {"Distance": 3, "Throttle": 20}],
+    )
+    assert result["points"] == []
+    assert result["channels"] == []
+
+
+def test_compare_telemetry_includes_exact_lap_and_sector_deltas(monkeypatch):
+    points = [
+        {"Distance": 0, "Speed": 100, "time_seconds": 0},
+        {"Distance": 100, "Speed": 200, "time_seconds": 10},
+    ]
+    monkeypatch.setattr(data, "telemetry", lambda *_: points)
+    monkeypatch.setattr(data, "driver_laps", lambda *_args: [
+        {"lap": 1, "seconds": 90.0, "sector_1": 30.0, "sector_2": 30.0, "sector_3": 30.0},
+        {"lap": 2, "seconds": 91.2, "sector_1": 30.4, "sector_2": 30.1, "sector_3": 30.7},
+    ])
+
+    result = data.compare_telemetry(2024, "Example GP", "AAA", 1, "BBB", 2)
+
+    assert result["lap_time_delta_seconds"] == 1.2
+    assert result["sector_time_deltas_seconds"] == {"sector_1": .4, "sector_2": .1, "sector_3": .7}
+
+
 def test_empty_upstream_session_returns_actionable_error(monkeypatch):
     class EmptySession:
         laps = pd.DataFrame()

@@ -158,6 +158,7 @@ def driver_laps(year: int, event: str, driver: str, session_name: str = "R") -> 
             "sector_3": _seconds(lap.get(fields[2])),
             "compound": "UNKNOWN" if _missing(lap.get("Compound")) else str(lap.get("Compound")),
             "tyre_life": _number(lap.get("TyreLife")),
+            "stint": _number(lap.get("Stint")),
             "pit_in": not _missing(lap.get("PitInTime")),
             "pit_out": not _missing(lap.get("PitOutTime")),
         })
@@ -210,33 +211,90 @@ def telemetry(year: int, event: str, driver: str, lap_number: int, session_name:
         return []
     frame = lap.iloc[0].get_telemetry().add_distance()
     fields = [name for name in ("Distance", "Speed", "Throttle", "Brake", "nGear", "RPM", "DRS") if name in frame]
-    return [{field: _number(row[field]) for field in fields} for _, row in frame.iterrows()]
+    result = []
+    for _, row in frame.iterrows():
+        point = {field: _number(row[field]) for field in fields}
+        # FastF1's telemetry Time is relative to the selected data slice.
+        # Keeping it enables a relative time-delta curve after distance alignment.
+        point["time_seconds"] = _seconds(row.get("Time"))
+        result.append(point)
+    return result
+
+
+def align_telemetry_points(first: list[dict], second: list[dict], point_count: int = 201) -> dict:
+    """Interpolate two lap traces onto their shared absolute distance range."""
+    import numpy as np
+
+    if not first or not second:
+        return {"points": [], "channels": [], "coordinate": "distance_m"}
+
+    def clean(points: list[dict]) -> tuple[Any, dict[str, tuple[Any, Any]]]:
+        usable = [(point, point.get("Distance")) for point in points]
+        usable = [(point, float(distance)) for point, distance in usable if distance is not None and np.isfinite(distance)]
+        usable.sort(key=lambda pair: pair[1])
+        if not usable:
+            return np.array([]), {}
+        distances = np.array([distance for _, distance in usable], dtype=float)
+        unique, indices = np.unique(distances, return_index=True)
+        usable_points = [usable[index][0] for index in indices]
+        series = {}
+        for channel in ("Speed", "Throttle", "Brake", "nGear", "RPM", "DRS", "time_seconds"):
+            values = np.array([point.get(channel) if point.get(channel) is not None else np.nan for point in usable_points], dtype=float)
+            valid = np.isfinite(values)
+            if valid.sum() >= 2:
+                series[channel] = (unique[valid], values[valid])
+        return unique, series
+
+    first_distance, first_series = clean(first)
+    second_distance, second_series = clean(second)
+    if len(first_distance) < 2 or len(second_distance) < 2:
+        return {"points": [], "channels": [], "coordinate": "distance_m"}
+    lower = max(first_distance[0], second_distance[0])
+    upper = min(first_distance[-1], second_distance[-1])
+    if not np.isfinite(lower) or not np.isfinite(upper) or upper <= lower:
+        return {"points": [], "channels": [], "coordinate": "distance_m"}
+
+    channels = [key for key in ("Speed", "Throttle", "Brake", "nGear", "RPM", "DRS") if key in first_series and key in second_series]
+    if not channels:
+        return {"points": [], "channels": [], "coordinate": "distance_m"}
+    grid = np.linspace(lower, upper, max(2, point_count))
+    result = []
+    first_time = np.interp(grid, *first_series["time_seconds"]) if "time_seconds" in first_series else None
+    second_time = np.interp(grid, *second_series["time_seconds"]) if "time_seconds" in second_series else None
+    first_time_origin = np.interp(lower, *first_series["time_seconds"]) if "time_seconds" in first_series else None
+    second_time_origin = np.interp(lower, *second_series["time_seconds"]) if "time_seconds" in second_series else None
+    for index, distance in enumerate(grid):
+        row: dict[str, float | None] = {"distance_m": round(float(distance), 3)}
+        for label, series in (("first", first_series), ("second", second_series)):
+            for channel in channels:
+                row[f"{label}_{channel}"] = round(float(np.interp(distance, *series[channel])), 3)
+        if first_time is not None and second_time is not None:
+            elapsed_first = first_time[index] - first_time_origin
+            elapsed_second = second_time[index] - second_time_origin
+            row["first_elapsed_seconds"] = round(float(elapsed_first), 3)
+            row["second_elapsed_seconds"] = round(float(elapsed_second), 3)
+            # Positive means the second trace has taken longer at this distance.
+            row["time_delta_seconds"] = round(float(elapsed_second - elapsed_first), 3)
+        result.append(row)
+    return {"points": result, "channels": channels, "coordinate": "distance_m"}
 
 
 def compare_telemetry(year: int, event: str, first_driver: str, first_lap: int, second_driver: str, second_lap: int, session_name: str = "R") -> dict:
-    """Compare compatible laps on a shared normalized distance grid (0–100%)."""
-    import numpy as np
+    """Compare two drivers/laps from the same event on overlapping track distance."""
+    first_points = telemetry(year, event, first_driver, first_lap, session_name)
+    second_points = telemetry(year, event, second_driver, second_lap, session_name)
+    result = align_telemetry_points(first_points, second_points)
+    if not result["points"]:
+        return {**result, "lap_time_delta_seconds": None, "sector_time_deltas_seconds": {}}
 
-    first = telemetry(year, event, first_driver, first_lap, session_name)
-    second = telemetry(year, event, second_driver, second_lap, session_name)
-    if not first or not second:
-        return {"points": [], "channels": [], "coordinate": "lap distance (%)"}
-    channels = [key for key in ("Speed", "Throttle", "Brake", "nGear", "RPM", "DRS") if any(key in p and p[key] is not None for p in first) and any(key in p and p[key] is not None for p in second)]
-    first_distance = np.array([p["Distance"] for p in first], dtype=float)
-    second_distance = np.array([p["Distance"] for p in second], dtype=float)
-    first_span = first_distance[-1] - first_distance[0]
-    second_span = second_distance[-1] - second_distance[0]
-    if first_span <= 0 or second_span <= 0:
-        return {"points": [], "channels": channels, "coordinate": "lap distance (%)"}
-    grid = np.linspace(0, 100, 201)
-    result = []
-    for percent in grid:
-        row: dict[str, float] = {"distance_percent": round(float(percent), 2)}
-        for label, points, distances, span in (("first", first, first_distance, first_span), ("second", second, second_distance, second_span)):
-            normalized = (distances - distances[0]) / span * 100
-            for channel in channels:
-                values = np.array([p[channel] if p[channel] is not None else np.nan for p in points], dtype=float)
-                valid = np.isfinite(values)
-                row[f"{label}_{channel}"] = round(float(np.interp(percent, normalized[valid], values[valid])), 3) if valid.sum() > 1 else None
-        result.append(row)
-    return {"points": result, "channels": channels, "coordinate": "lap distance (%)"}
+    first_lap_data = next((row for row in driver_laps(year, event, first_driver, session_name) if row["lap"] == first_lap), None)
+    second_lap_data = next((row for row in driver_laps(year, event, second_driver, session_name) if row["lap"] == second_lap), None)
+    lap_delta = None
+    sector_deltas: dict[str, float | None] = {}
+    if first_lap_data and second_lap_data:
+        if first_lap_data["seconds"] is not None and second_lap_data["seconds"] is not None:
+            lap_delta = round(second_lap_data["seconds"] - first_lap_data["seconds"], 3)
+        for sector in ("sector_1", "sector_2", "sector_3"):
+            first_sector, second_sector = first_lap_data[sector], second_lap_data[sector]
+            sector_deltas[sector] = round(second_sector - first_sector, 3) if first_sector is not None and second_sector is not None else None
+    return {**result, "lap_time_delta_seconds": lap_delta, "sector_time_deltas_seconds": sector_deltas}

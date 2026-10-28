@@ -74,16 +74,19 @@ def test_optimiser_reports_candidate_space_and_supports_three_stops():
 
 def test_telemetry_compare_returns_distance_aligned_data(monkeypatch):
     monkeypatch.setattr("app.data.compare_telemetry", lambda **_: {
-        "points": [{"distance_percent": 0.0, "first_Speed": 100, "second_Speed": 99}],
-        "channels": ["Speed"], "coordinate": "lap distance (%)",
+        "points": [{"distance_m": 0.0, "first_Speed": 100, "second_Speed": 99, "time_delta_seconds": 0.0}],
+        "channels": ["Speed"], "coordinate": "distance_m",
+        "lap_time_delta_seconds": 1.2,
+        "sector_time_deltas_seconds": {"sector_1": .2},
     })
     response = client.post("/api/sessions/telemetry/compare", json={
         "year": 2024, "event": "Example GP", "first_driver": "AAA", "first_lap": 1,
         "second_driver": "BBB", "second_lap": 2,
     })
     assert response.status_code == 200
-    assert response.json()["points"][0]["distance_percent"] == 0
-    assert response.json()["coordinate"] == "lap distance (%)"
+    assert response.json()["points"][0]["distance_m"] == 0
+    assert response.json()["coordinate"] == "distance_m"
+    assert response.json()["lap_time_delta_seconds"] == 1.2
 
 
 def test_unavailable_fastf1_session_explains_optional_auth(monkeypatch):
