@@ -37,12 +37,13 @@ describe('Apexion navigation', () => {
 
   it('opens the simulator and displays its API result', async () => {
     provideResizeObserver();
-    vi.stubGlobal('fetch', vi.fn(async (input: RequestInfo | URL) => {
+    vi.stubGlobal('fetch', vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
       const url = String(input);
+      const changedPit = url.endsWith('/api/simulations') && JSON.parse(String(init?.body)).pit_laps[0] === 30;
       const payload = url.endsWith('/api/health') ? { status: 'ok' } : url.endsWith('/api/events?season=2024') ? { events: [] } : {
-        total_seconds: 5350, pit_stops: 1, pit_loss_seconds: 22, green_flag_seconds: 5328,
-        stints: [{ start_lap: 1, end_lap: 20, laps: 20, compound: 'MEDIUM', estimated_seconds: 1810 }, { start_lap: 21, end_lap: 58, laps: 38, compound: 'HARD', estimated_seconds: 3540 }],
-        lap_curve: [], assumptions: { source: 'Illustrative deterministic baseline; not fitted to a race.' },
+        total_seconds: changedPit ? 5349 : 5350, pit_stops: 1, pit_loss_seconds: 22, green_flag_seconds: 5328, baseline_total_seconds: 5350, baseline_description: 'No-stop baseline', delta_vs_baseline_seconds: 0, explanations: ['Compound choices changed modeled pace by 0.000 s.', 'Stint resets changed tyre-age degradation by 0.000 s.', '1 pit stop(s) add 22.000 s at 22.000 s each.', 'Estimated total is 0.000 s versus baseline.'],
+        stints: [{ start_lap: 1, end_lap: 20, laps: 20, compound: 'MEDIUM', estimated_seconds: 1810, baseline_pace_contribution_seconds:1800, compound_adjustment_seconds:7, degradation_seconds:3, green_flag_seconds:1810, pit_loss_after_seconds:22 }, { start_lap: 21, end_lap: 58, laps: 38, compound: 'HARD', estimated_seconds: 3540, baseline_pace_contribution_seconds:3420, compound_adjustment_seconds:28, degradation_seconds:92, green_flag_seconds:3540, pit_loss_after_seconds:0 }], pit_stop_details: [],
+        lap_curve: [{lap:1,seconds:91,compound:'MEDIUM',tyre_age:0}], assumptions: { baseline_pace_seconds:90, source: 'Illustrative deterministic baseline; not fitted to a race.' }, strategy:{race_laps:58,pit_laps:[20],compounds:['MEDIUM','HARD']},
       };
       return new Response(JSON.stringify(payload), { status: 200, headers: { 'Content-Type': 'application/json' } });
     }));
@@ -51,6 +52,9 @@ describe('Apexion navigation', () => {
     fireEvent.click(screen.getByRole('button', { name: /run simulation/i }));
     expect(await screen.findByText('Strategy outcome')).toBeTruthy();
     expect(screen.getByText('89:10.000')).toBeTruthy();
+    fireEvent.change(screen.getByLabelText(/pit-stop lap/i), { target: { value: '30' } });
+    fireEvent.click(screen.getByRole('button', { name: /run simulation/i }));
+    expect(await screen.findByText('89:09.000')).toBeTruthy();
     fireEvent.click(screen.getByRole('button', { name: /save to comparison/i }));
     fireEvent.click(screen.getByRole('button', { name: /strategy comparison/i }));
     expect(await screen.findByRole('heading', { name: 'Strategy comparison' })).toBeTruthy();
