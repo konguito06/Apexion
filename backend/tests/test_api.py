@@ -6,13 +6,16 @@ client = TestClient(app)
 
 
 def test_health_endpoint():
-    assert client.get("/api/health").json()["status"] == "ok"
+    result = client.get("/api/health").json()
+    assert result["status"] == "ok"
+    assert result["data_provider"] == "FastF1"
 
 
 def test_simulation_endpoint():
     response = client.post("/api/simulations", json={"race_laps": 10, "compounds": ["MEDIUM", "HARD"], "pit_laps": [5]})
     assert response.status_code == 200
     assert response.json()["pit_stops"] == 1
+    assert response.json()["strategy"]["pit_laps"] == [5]
 
 
 def test_invalid_strategy_has_useful_error():

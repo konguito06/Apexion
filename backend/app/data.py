@@ -1,12 +1,15 @@
 """FastF1 adapter with normalized, provenance-preserving response shapes."""
 from functools import lru_cache
+from pathlib import Path
 from typing import Any
 
 try:
     import fastf1
     import pandas as pd
 
-    fastf1.Cache.configure(cache_dir=".cache/fastf1")
+    cache_dir = Path(__file__).resolve().parents[1] / ".cache" / "fastf1"
+    cache_dir.mkdir(parents=True, exist_ok=True)
+    fastf1.Cache.configure(cache_dir=str(cache_dir))
 except Exception:  # Keep simulation/API startup available if FastF1 is absent.
     fastf1 = None
     pd = None

@@ -4,6 +4,7 @@ The defaults are illustrative, not fitted to a particular race or car.
 """
 from dataclasses import dataclass
 from itertools import combinations, product
+from math import isfinite
 
 COMPOUNDS = {"SOFT": 0.0, "MEDIUM": 0.35, "HARD": 0.75}
 
@@ -31,6 +32,8 @@ class Strategy:
         bounds = [0, *self.pit_laps, self.race_laps]
         if any(b - a <= 0 for a, b in zip(bounds, bounds[1:])):
             raise ValueError("Every stint must contain at least one lap")
+        if not all(isfinite(value) for value in (self.baseline_pace_seconds, self.pit_loss_seconds, self.degradation_seconds_per_lap)):
+            raise ValueError("Pace, pit loss, and degradation must be finite numbers")
         if self.baseline_pace_seconds <= 0 or self.pit_loss_seconds < 0 or self.degradation_seconds_per_lap < 0:
             raise ValueError("Pace must be positive and losses/degradation cannot be negative")
 
@@ -52,7 +55,7 @@ def simulate(strategy: Strategy) -> dict:
         stints.append({"start_lap": start + 1, "end_lap": end, "laps": end - start, "compound": compound, "estimated_seconds": round(stint_seconds, 3)})
     pit_cost = len(strategy.pit_laps) * strategy.pit_loss_seconds
     total += pit_cost
-    return {"total_seconds": round(total, 3), "pit_stops": len(strategy.pit_laps), "pit_loss_seconds": round(pit_cost, 3), "green_flag_seconds": round(total - pit_cost, 3), "stints": stints, "lap_curve": lap_curve, "assumptions": {"baseline_pace_seconds": strategy.baseline_pace_seconds, "compound_adjustments_seconds": COMPOUNDS, "degradation_seconds_per_lap_of_tyre_age": strategy.degradation_seconds_per_lap, "pit_loss_seconds_per_stop": strategy.pit_loss_seconds, "source": "Illustrative deterministic baseline; not fitted to a race."}}
+    return {"total_seconds": round(total, 3), "pit_stops": len(strategy.pit_laps), "pit_loss_seconds": round(pit_cost, 3), "green_flag_seconds": round(total - pit_cost, 3), "stints": stints, "lap_curve": lap_curve, "strategy": {"race_laps": strategy.race_laps, "pit_laps": list(strategy.pit_laps), "compounds": list(strategy.compounds)}, "assumptions": {"baseline_pace_seconds": strategy.baseline_pace_seconds, "compound_adjustments_seconds": COMPOUNDS, "degradation_seconds_per_lap_of_tyre_age": strategy.degradation_seconds_per_lap, "pit_loss_seconds_per_stop": strategy.pit_loss_seconds, "source": "Illustrative deterministic baseline; not fitted to a race."}}
 
 
 def optimise(race_laps: int, pit_loss_seconds: float = 22.0, max_stops: int = 2) -> list[dict]:
@@ -60,7 +63,7 @@ def optimise(race_laps: int, pit_loss_seconds: float = 22.0, max_stops: int = 2)
 
 
 def optimise_with_metadata(race_laps: int, pit_loss_seconds: float = 22.0, max_stops: int = 2) -> dict:
-    if not 1 <= race_laps <= 100 or not 0 <= max_stops <= 3 or pit_loss_seconds < 0:
+    if not 1 <= race_laps <= 100 or not 0 <= max_stops <= 3 or not isfinite(pit_loss_seconds) or pit_loss_seconds < 0:
         raise ValueError("Invalid optimisation bounds")
     candidates = []
     evaluated = 0

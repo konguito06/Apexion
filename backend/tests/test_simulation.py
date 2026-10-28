@@ -29,3 +29,8 @@ def test_optimiser_returns_sorted_valid_candidates():
     assert results
     assert results == sorted(results, key=lambda x: x["total_seconds"])
     assert all(len(x["stints"]) == x["pit_stops"] + 1 for x in results)
+
+
+def test_non_finite_model_parameters_are_rejected():
+    with pytest.raises(ValueError, match="finite"):
+        simulate(Strategy(10, ["HARD"], [], baseline_pace_seconds=float("nan")))
