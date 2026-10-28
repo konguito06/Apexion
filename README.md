@@ -9,7 +9,7 @@
 - Recently opened session links saved in the browser for quick return.
 - Session summary, historical classification, driver laps, sector times, tyre compounds, pit laps and tyre stint summaries when present in source data.
 - Lap pace plot, valid-lap filtering, median representative pace, best valid lap, interquartile range and median sector times.
-- Actual telemetry channels returned for a selected lap, plus two-lap/driver channel comparisons interpolated to a shared 0–100% lap-distance axis.
+- Actual telemetry channels returned for a selected lap, plus two-lap/driver comparisons aligned on their shared absolute distance overlap in metres.
 - Deterministic, user-configurable strategy evaluation with tyre compounds, pit laps, race laps, pace, tyre-age degradation and pit loss.
 - Bounded optimisation through three stops with an explicit candidate count and search description.
 - Named strategy scenarios persisted in browser local storage, editable configuration, baseline deltas, duplicate/remove actions and CSV export.
@@ -64,7 +64,8 @@ Tests use synthetic fixtures and do not need internet or a FastF1 download.
 - Classification, lap times, sector times, tyre compounds, stint ids and available car channels are source observations from FastF1.
 - `representative lap` excludes missing lap times and laps with a pit-in or pit-out marker. It does not adjust for traffic, safety cars, fuel, weather, track evolution or tire condition beyond reported tyre age.
 - Driver pace uses the median of representative laps. Variability uses the interquartile range (75th percentile minus 25th percentile). Best valid lap is shown separately and is not treated as normal pace. Sector medians use the representative-lap set, omitting missing sector values.
-- Paired telemetry is interpolated to a shared normalized 0–100% lap-distance coordinate. This is a relative lap coordinate, not absolute circuit distance. Only channels present in both traces are shown.
+- Paired telemetry is interpolated over the laps' shared absolute distance overlap in metres. Relative time deltas use FastF1's telemetry `Time` samples after aligning elapsed time at the overlap start. Exact lap and sector deltas come from FastF1 lap timing. Only channels present in both traces are shown.
+- Braking regions use available Brake signals. Acceleration regions are derived only where measured throttle is at least 80% and measured speed increases between samples. These visual regions are descriptive cues, not calibrated corner annotations.
 - Missing data remains missing. Telemetry channels are not fabricated.
 
 ## Strategy model

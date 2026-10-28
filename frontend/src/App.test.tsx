@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import App from './App';
 
 afterEach(() => { cleanup(); vi.restoreAllMocks(); });
@@ -72,8 +72,36 @@ describe('Apexion navigation', () => {
     }));
     render(<App />);
     fireEvent.click(screen.getByRole('button', { name: /race explorer/i }));
-    expect(await screen.findByText('Example Grand Prix · Race')).toBeTruthy();
+    expect(await screen.findByText('Example Grand Prix · 2024')).toBeTruthy();
     expect(await screen.findByText('Driver A')).toBeTruthy();
-    expect(await screen.findByText('91.200')).toBeTruthy();
+    expect(await screen.findByText('91.200 s')).toBeTruthy();
+  });
+
+  it('selects a historical session, loads telemetry and compares two laps through the app shell', async () => {
+    provideResizeObserver();
+    const laps = [1,2].map(lap => ({ lap, seconds:90+lap, sector_1:30, sector_2:30, sector_3:30, compound:'MEDIUM', tyre_life:lap, stint:1, pit_in:false, pit_out:false }));
+    vi.stubGlobal('fetch', vi.fn(async (input: RequestInfo | URL) => {
+      const url=String(input);
+      let payload:unknown={};
+      if(url.endsWith('/api/health')) payload={status:'ok'};
+      else if(url.endsWith('/api/seasons')) payload={seasons:[2024]};
+      else if(url.includes('/api/events')) payload={events:[{name:'Example Grand Prix',round:1,sessions:['Practice 1','Race']}]};
+      else if(url.includes('/summary')) payload={year:2024,event:'Example Grand Prix',session:'Race',date:'2024-03-02',drivers:['AAA','BBB'],race_laps:2,lap_observations:4,pit_stops:0,compounds:['MEDIUM'],classification:[],data_source:'FastF1 historical data',status:'loaded'};
+      else if(url.includes('/laps')) payload={laps};
+      else if(url.includes('/telemetry/compare')) payload={data_source:'FastF1 historical telemetry',coordinate:'distance_m',channels:['Speed','Throttle','Brake'],lap_time_delta_seconds:1.2,sector_time_deltas_seconds:{sector_1:.4,sector_2:.1,sector_3:.7},points:[{distance_m:0,first_Speed:100,second_Speed:90,first_Throttle:20,second_Throttle:20,first_Brake:1,second_Brake:1,time_delta_seconds:0},{distance_m:100,first_Speed:200,second_Speed:180,first_Throttle:95,second_Throttle:90,first_Brake:0,second_Brake:0,time_delta_seconds:1}]};
+      else if(url.includes('/telemetry?')) payload={data_source:'FastF1 historical telemetry',points:[{Distance:0,Speed:100,Throttle:20,Brake:1,nGear:3,RPM:7000,DRS:0,time_seconds:0},{Distance:100,Speed:200,Throttle:95,Brake:0,nGear:5,RPM:11000,DRS:1,time_seconds:10}]};
+      return new Response(JSON.stringify(payload),{status:200,headers:{'Content-Type':'application/json'}});
+    }));
+    render(<App/>);
+    expect(await screen.findByText('FastF1 historical data')).toBeTruthy();
+    fireEvent.click(screen.getByRole('button',{name:/telemetry lab/i}));
+    await waitFor(()=>expect((screen.getByRole('button',{name:'Load telemetry'}) as HTMLButtonElement).disabled).toBe(false));
+    fireEvent.click(screen.getByRole('button',{name:'Load telemetry'}));
+    expect(await screen.findByRole('heading',{name:'Speed · km/h'})).toBeTruthy();
+    fireEvent.click(screen.getByRole('checkbox',{name:'Compare two laps'}));
+    await waitFor(()=>expect((screen.getByRole('button',{name:'Load telemetry'}) as HTMLButtonElement).disabled).toBe(false));
+    fireEvent.click(screen.getByRole('button',{name:'Load telemetry'}));
+    expect(await screen.findByRole('heading',{name:/Relative time delta/})).toBeTruthy();
+    expect(screen.getByText('+1.200 s')).toBeTruthy();
   });
 });
