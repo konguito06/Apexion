@@ -18,7 +18,6 @@ export function TelemetryLab({year,event,session,drivers,driver,setDriver,laps,l
   const [secondLaps,setSecondLaps]=useState<Lap[]>([]);
   const [points,setPoints]=useState<TelemetryPoint[]>([]);
   const [channels,setChannels]=useState<string[]>([]);
-  const [coordinate,setCoordinate]=useState('Distance');
   const [comparison,setComparison]=useState<Comparison|null>(null);
   const [message,setMessage]=useState('Select a session with loaded lap data to inspect measured telemetry.');
   const [busy,setBusy]=useState(false);
@@ -33,12 +32,12 @@ export function TelemetryLab({year,event,session,drivers,driver,setDriver,laps,l
     const next=drivers.find(candidate=>candidate!==driver)??driver;
     setSecondDriver(current=>drivers.includes(current)?current:next);
     setSecondLaps([]);
-  },[drivers.join('|'),driver,year,event,session]);
+  },[drivers,driver,year,event,session]);
   useEffect(()=>{
     if(!compare||!event||!secondDriver) {setSecondLaps([]);return;}
     let active=true;
     request<{laps:Lap[]}>(`/api/sessions/${year}/${encodeURIComponent(event)}/laps?driver=${encodeURIComponent(secondDriver)}&session=${encodeURIComponent(session)}`)
-      .then(result=>{if(active){setSecondLaps(result.laps);if(result.laps.length&&!result.laps.some(row=>row.lap===secondLap))setSecondLap(result.laps[0].lap);}})
+      .then(result=>{if(active){setSecondLaps(result.laps);if(result.laps.length)setSecondLap(current=>result.laps.some(row=>row.lap===current)?current:result.laps[0].lap);}})
       .catch(error=>{if(active){setSecondLaps([]);setMessage(error instanceof Error?error.message:'Could not load the second driver laps');}});
     return()=>{active=false;};
   },[compare,year,event,session,secondDriver]);
@@ -54,13 +53,13 @@ export function TelemetryLab({year,event,session,drivers,driver,setDriver,laps,l
       if(compare) {
         const result=await request<Comparison>('/api/sessions/telemetry/compare',{method:'POST',body:JSON.stringify({year,event,session,first_driver:driver,first_lap:lap,second_driver:secondDriver,second_lap:secondLap})});
         if(currentKey.current!==requestKey)return;
-        setPoints(result.points);setChannels(result.channels);setComparison(result);setCoordinate('distance_m');
+        setPoints(result.points);setChannels(result.channels);setComparison(result);
         setMessage(result.points.length?`${result.points.length} aligned points · shared track distance · ${result.data_source}`:'These laps have no overlapping distance and channel data to compare.');
       } else {
         const result=await request<{points:TelemetryPoint[];data_source:string}>(`/api/sessions/${year}/${encodeURIComponent(event)}/telemetry?driver=${encodeURIComponent(driver)}&lap=${lap}&session=${encodeURIComponent(session)}`);
         if(currentKey.current!==requestKey)return;
         const measured=availableChannels.filter(channel=>result.points.some(point=>typeof point[channel]==='number'));
-        setPoints(result.points);setChannels(measured);setComparison(null);setCoordinate('Distance');
+        setPoints(result.points);setChannels(measured);setComparison(null);
         setMessage(result.points.length?`${result.points.length} samples · FastF1 lap distance · ${result.data_source}`:'No telemetry samples are available for this lap.');
       }
     } catch(error) {
@@ -97,7 +96,7 @@ export function TelemetryLab({year,event,session,drivers,driver,setDriver,laps,l
         return <section className="panel telemetry-channel" key={channel}>
           <div className="panel-head"><div><div className="eyebrow">{compare?'ALIGNED COMPARISON':'FASTF1 OBSERVATION'}</div><h2>{channel} <small>· {channelUnits[channel]}</small></h2></div>{speed&&<div className="telemetry-region-legend"><span><i className="braking"/> Brake</span><span><i className="acceleration"/> Acceleration</span></div>}</div>
           <ResponsiveContainer width="100%" height={230}><LineChart data={points} margin={{top:8,right:12,bottom:15,left:0}}>
-            <CartesianGrid stroke="#292b30" vertical={false}/><XAxis dataKey={xKey} type="number" domain={['dataMin','dataMax']} stroke="#737780" tickLine={false} label={{value:compare?'TRACK DISTANCE · METRES':'DISTANCE · METRES',position:'insideBottom',offset:-8,fill:'#777'}}/><YAxis stroke="#737780" tickLine={false} unit={channel==='Speed'?' km/h':channel==='Throttle'?' %':''}/><Tooltip contentStyle={{background:'#17191d',border:'1px solid #34363c'}} labelFormatter={value=>`Distance ${Number(value).toFixed(1)} m`} formatter={value=>[value==null?'—':`${Number(value).toFixed(2)} ${channelUnits[channel]}`,channel]}/>
+            <CartesianGrid stroke="#292b30" vertical={false}/><XAxis dataKey={xKey} type="number" domain={['dataMin','dataMax']} stroke="#737780" tickLine={false} label={{value:compare?'TRACK DISTANCE · METRES':'DISTANCE · METRES',position:'insideBottom',offset:-8,fill:'#777'}}/><YAxis stroke="#737780" tickLine={false} unit={channel==='Speed'?' km/h':channel==='Throttle'?' %':''} tickFormatter={value=>Number(value).toLocaleString(undefined,{maximumFractionDigits:channel==='RPM'?0:1})} width={channel==='RPM'?65:55}/><Tooltip contentStyle={{background:'#17191d',border:'1px solid #34363c'}} labelFormatter={value=>`Distance ${Number(value).toFixed(1)} m`} formatter={value=>[value==null?'—':`${Number(value).toFixed(2)} ${channelUnits[channel]}`,channel]}/>
             {channelRegions.map((region,index)=><ReferenceArea key={`${region.kind}-${index}`} x1={region.start} x2={region.end} fill={region.kind==='braking'?'#ef3d42':'#55b8c8'} fillOpacity={region.kind==='braking'?0.12:0.10} strokeOpacity={0}/>) }
             {compare?<><Line dataKey={`first_${channel}`} name={`${driver} · Lap ${lap}`} stroke="#ef3d42" strokeWidth={1.8} dot={false}/><Line dataKey={`second_${channel}`} name={`${secondDriver} · Lap ${secondLap}`} stroke="#55b8c8" strokeWidth={1.8} dot={false}/></>:<Line dataKey={channel} name={`${driver} · Lap ${lap}`} stroke="#ef3d42" strokeWidth={1.8} dot={false}/>}
           </LineChart></ResponsiveContainer>
@@ -106,7 +105,7 @@ export function TelemetryLab({year,event,session,drivers,driver,setDriver,laps,l
       })}</div>
       {timeDeltaAvailable&&<section className="panel telemetry-channel">
         <div className="panel-head"><div><div className="eyebrow">CALCULATED FROM FASTF1 TELEMETRY TIME</div><h2>Relative time delta <small>· seconds · second − first</small></h2></div></div>
-        <ResponsiveContainer width="100%" height={230}><LineChart data={points} margin={{top:8,right:12,bottom:15,left:0}}><CartesianGrid stroke="#292b30" vertical={false}/><XAxis dataKey="distance_m" type="number" domain={['dataMin','dataMax']} stroke="#737780" tickLine={false} label={{value:'TRACK DISTANCE · METRES',position:'insideBottom',offset:-8,fill:'#777'}}/><YAxis stroke="#737780" tickLine={false} unit=" s"/><Tooltip contentStyle={{background:'#17191d',border:'1px solid #34363c'}} labelFormatter={value=>`Distance ${Number(value).toFixed(1)} m`} formatter={value=>[value==null?'—':`${Number(value).toFixed(3)} s`,'Second − first']}/><Line dataKey="time_delta_seconds" name="Second − first" stroke="#d7b75b" dot={false}/></LineChart></ResponsiveContainer>
+        <ResponsiveContainer width="100%" height={230}><LineChart data={points} margin={{top:8,right:12,bottom:15,left:0}}><CartesianGrid stroke="#292b30" vertical={false}/><XAxis dataKey="distance_m" type="number" domain={['dataMin','dataMax']} stroke="#737780" tickLine={false} label={{value:'TRACK DISTANCE · METRES',position:'insideBottom',offset:-8,fill:'#777'}}/><YAxis stroke="#737780" tickLine={false} unit=" s" tickFormatter={value=>Number(value).toFixed(2)} width={60}/><Tooltip contentStyle={{background:'#17191d',border:'1px solid #34363c'}} labelFormatter={value=>`Distance ${Number(value).toFixed(1)} m`} formatter={value=>[value==null?'—':`${Number(value).toFixed(3)} s`,'Second − first']}/><Line dataKey="time_delta_seconds" name="Second − first" stroke="#d7b75b" dot={false}/></LineChart></ResponsiveContainer>
       </section>}
     </> : <section className="panel"><div className="empty large">{busy?'Loading telemetry…':loading?'Loading the selected session…':channels.length===0&&points.length>0?'No supported telemetry channels are available for these laps.':'Load a supported lap to display available speed, throttle, brake, gear, RPM or DRS channels.'}</div></section>}
     {points.length>0&&<div className="data-provenance"><b>{comparison?.data_source??'FastF1 historical telemetry'}</b><span>{year} · {event} · {session}</span><span>{compare?'Actual distance in metres; shared overlapping distance is plotted.':'FastF1 distance in metres along this lap.'}</span></div>}

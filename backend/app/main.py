@@ -9,7 +9,7 @@ from . import data, evaluation
 from .simulation import DEFAULT_BASELINE_PACE_SECONDS, DEFAULT_DEGRADATION_SECONDS_PER_LAP, DEFAULT_PIT_LOSS_SECONDS, Strategy, optimise_with_metadata, simulate
 
 app = FastAPI(title="Apexion API", version="0.1.0", description="Historical F1 data and transparent strategy simulation")
-cors_origins = [origin.strip() for origin in os.getenv("APEXION_CORS_ORIGINS", "http://localhost:5173,http://localhost:8080").split(",") if origin.strip()]
+cors_origins = [origin.strip() for origin in os.getenv("APEXION_CORS_ORIGINS", "").split(",") if origin.strip()]
 app.add_middleware(CORSMiddleware, allow_origins=cors_origins, allow_methods=["GET", "POST"], allow_headers=["Content-Type"])
 
 

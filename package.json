@@ -3,10 +3,15 @@
   "private": true,
   "type": "module",
   "engines": {
-    "node": ">=20"
+    "node": ">=24"
   },
   "scripts": {
     "setup": "node scripts/setup.mjs",
-    "dev": "node scripts/dev.mjs"
+    "dev": "node scripts/dev.mjs",
+    "lint": "node scripts/check.mjs lint",
+    "typecheck": "node scripts/check.mjs typecheck",
+    "test": "node scripts/check.mjs test",
+    "build": "node scripts/check.mjs build",
+    "check": "node scripts/check.mjs check"
   }
 }

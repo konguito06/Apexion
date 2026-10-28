@@ -1,6 +1,16 @@
 # Apexion
 
-**Find the optimal line.** Apexion is an independent F1 race analysis and strategy simulation application. It combines historical session data from [FastF1](https://docs.fastf1.dev/) with a deterministic strategy model that uses an optional race-specific historical pace and tyre-degradation estimate, with documented illustrative fallbacks. It is an educational portfolio project, not a recreation of a team's proprietary tools.
+**Find the optimal line.** Apexion is an independent Formula 1 race analysis and strategy simulation application. It combines public historical session data from [FastF1](https://docs.fastf1.dev/) with a deterministic strategy model, documented assumptions and measured telemetry where the source provides it. It is an educational portfolio project, not a recreation of a team's proprietary tools.
+
+## Screenshots
+
+These images were captured from the running application in Chrome. The dashboard screenshot explicitly shows its sample fallback and FastF1's current session-data error; it does not present sample laps as historical measurements. The simulator screenshot shows a real response from Apexion's local deterministic simulation endpoint.
+
+| Overview · desktop | Overview · mobile |
+| --- | --- |
+| ![Apexion overview at desktop width](docs/screenshots/overview-desktop.png) | ![Apexion overview at 390-pixel mobile width](docs/screenshots/overview-mobile.png) |
+
+![Apexion strategy simulator with a locally calculated estimate](docs/screenshots/simulator-desktop.png)
 
 ## What works
 
@@ -15,13 +25,21 @@
 - Named strategy scenarios persisted in browser local storage, editable configuration, baseline deltas, duplicate/remove actions and CSV export.
 - FastF1 cache, graceful source errors, synthetic-data unit tests and a GitHub Actions workflow.
 
-Data coverage depends on the historical session, upstream availability and available channels. Apexion uses FastF1's dynamic event schedule and session loader, caches event schedules in memory and relies on FastF1's disk cache for downloaded session data. The live 2024 schedule loaded successfully with 24 events in this environment. A live Bahrain race load reached FastF1 but returned no timing data because upstream timing endpoints reported that F1 account credentials were unavailable; Apexion returned an actionable 503 instead of inventing historical measurements. If needed, set `F1_USERNAME` and `F1_PASSWORD` in the shell before starting Apexion. When FastF1 returns classification or metadata without timed laps, Apexion marks the session as partial and leaves lap fields empty. The overview's synthetic sample pace series is explicitly labelled and only used when historical laps have not loaded.
+Data coverage depends on the selected session, upstream availability and source-provided channels. Apexion queries FastF1's dynamic schedule and session loader, caches schedules in memory and relies on FastF1's disk cache for session data. In the final local verification, the 2024 schedule returned 24 events, but the Bahrain Race summary returned HTTP 503 because the upstream timing feed reported that it may require `F1_USERNAME` and `F1_PASSWORD`. The interface displays that error rather than substituting measurements. When source metadata exists without lap timing, Apexion marks the session partial. Its synthetic overview curve is explicitly labelled and shown only as a fallback.
+
+## Technology stack
+
+- Frontend: React 18, TypeScript, Vite, Recharts and Lucide.
+- Backend: Python, FastAPI, Pydantic and FastF1.
+- Testing and quality: Vitest, React Testing Library, pytest, ESLint, Ruff and TypeScript.
+- Packaging: Docker multi-stage frontend image, non-root FastAPI container and Docker Compose.
+- Automation: GitHub Actions runs lint, backend and frontend tests, TypeScript checks and a production frontend build.
 
 ## Run locally with one command
 
-Requirements: Python 3.10+ and Node.js 20+.
+Requirements: Python 3.10+ and Node.js 24+.
 
-From the project root, install both frontend and backend dependencies once:
+From the project root, install locked frontend packages and the backend runtime, test and lint packages once:
 
 ```bash
 npm run setup
@@ -33,31 +51,63 @@ Then launch the frontend and backend together:
 npm run dev
 ```
 
-Open <http://localhost:5173>. Both services log in the same terminal; press **Ctrl+C** to stop them together. The frontend proxies `/api` to FastAPI on port 8000. API docs are at <http://localhost:8000/docs>. The launcher reports missing dependencies and unexpected service exits, including likely port conflicts.
+Open <http://localhost:5173>. Both services log in the same terminal; press **Ctrl+C** to stop them together. The frontend proxies `/api` to FastAPI on port 8000. API docs are at <http://localhost:8000/docs>. The launcher reports missing dependencies and unexpected service exits, including likely port conflicts. Node 24 is the supported local and CI runtime.
 
-FastF1 data is cached in `backend/.cache/fastf1`, created automatically and ignored by Git. Schedule requests require internet. Historical timing availability depends on FastF1 and its upstream feed; some current requests may require an F1 account. If needed, export `F1_USERNAME` and `F1_PASSWORD` in the terminal before `npm run dev`. Do not commit credentials. To use another backend origin, set `VITE_API_URL` at frontend build time.
+FastF1 data is cached in `backend/.cache/fastf1`, created automatically and ignored by Git. Schedule requests require internet. Historical timing availability depends on FastF1 and its upstream feed; some requests may require an F1 account. If needed, export credentials in your shell before `npm run dev`:
+
+```bash
+export F1_USERNAME="your-account"
+export F1_PASSWORD="your-password"
+npm run dev
+```
+
+Do not commit credentials. The standard local frontend uses a same-origin Vite proxy, so `APEXION_CORS_ORIGINS` and `VITE_API_URL` can remain unset. `VITE_API_URL` is a build-time frontend setting for a separately hosted API; set `APEXION_CORS_ORIGINS` to the exact public frontend origin in that deployment.
 
 ## Run with Docker Compose
 
-With Docker and the Compose plugin installed:
+With Docker Engine/Desktop and the Compose plugin installed:
 
 ```bash
-docker compose up --build
+cp .env.example .env
+docker compose up --build --wait
 ```
 
-Open <http://localhost:8080>. The backend API docs remain at <http://localhost:8000/docs>. Compose stores FastF1 cache data in the `fastf1-cache` volume. If the upstream feed requires credentials, copy `.env.example` to `.env` and add them there. Stop services with `docker compose down`; the named cache volume remains available.
+Open <http://localhost:8080>. The backend API docs remain at <http://localhost:8000/docs>. Compose stores FastF1 cache data in the `fastf1-cache` volume, waits for the API health check before starting the frontend, and runs the backend as a non-root user. Add optional `F1_USERNAME` and `F1_PASSWORD` to `.env` only if your FastF1 session requests require them. Compose serves `/api` through Nginx on the same origin, so leave `APEXION_CORS_ORIGINS` empty. `HOST_PORT` changes the host API port only. Stop services with `docker compose down`; the named cache volume remains available. Docker build, startup, health checks, and frontend-to-backend proxy were verified locally.
 
 ## Verify
 
 ```bash
-cd backend
-.venv/bin/python -m pytest
-cd ../frontend
-npm test
-npm run build
+npm run check
 ```
 
-Tests use synthetic fixtures and do not need internet or a FastF1 download.
+`npm run check` runs both linters, the frontend type check, backend and frontend tests, and the production frontend build. Individual root commands are available as `npm run lint`, `npm run typecheck`, `npm run test`, and `npm run build`. Tests use deterministic fixtures and do not need internet or FastF1 downloads. GitHub Actions runs those required checks on pushes and pull requests.
+
+## Architecture
+
+```mermaid
+flowchart LR
+  Browser[React + TypeScript + Recharts] -->|JSON / same-origin /api| Proxy[Vite dev proxy or Nginx]
+  Proxy --> API[FastAPI + Pydantic]
+  API --> Data[FastF1 adapter and disk cache]
+  API --> Sim[Deterministic simulator and bounded optimiser]
+  API --> Eval[Saved evaluation report, when generated]
+```
+
+The API layer validates input and maps failures to useful HTTP responses. The FastF1 adapter handles schedules, session loading, normalisation and cache access. Simulation and optimisation calculations are kept in backend services and share the same deterministic engine.
+
+## Deployment guide
+
+No public deployment has been performed; there is no live URL. The verified container path is a single-host Docker Compose deployment. For a public host, place a TLS reverse proxy such as Caddy or a managed HTTPS load balancer in front of port 8080, restrict public access to the frontend origin, and persist the `fastf1-cache` volume. Do not expose F1 credentials in frontend variables or browser code.
+
+For separately hosted frontend and API services:
+
+1. Build and deploy the backend image from `backend/Dockerfile`. The container listens on the platform-provided `PORT` (defaults to 8000), and FastF1's cache must use writable persistent storage if it should survive restarts.
+2. Set backend `APEXION_CORS_ORIGINS` to the exact HTTPS origin serving the frontend (comma-separated only if several trusted origins are required). Leave it empty when a same-origin proxy is used.
+3. Set `F1_USERNAME` and `F1_PASSWORD` as backend-only secret environment variables when the upstream source requires authentication. They are optional and do not guarantee that every session is available.
+4. Build the frontend image or static bundle with `VITE_API_URL=https://your-api.example.com` if it calls the API directly. For a same-origin reverse proxy, leave `VITE_API_URL` empty and route `/api` to the backend.
+5. Configure the hosting platform's health check to request `/api/health` on the backend and the frontend root `/` on the frontend.
+
+The repo's Docker Compose topology uses Nginx to proxy `/api` to FastAPI and is suitable for local use or a small single-host demonstration. Use your platform's secret manager rather than committing `.env`. The public F1 timing feed may require an account and is outside Apexion's control.
 
 ## Data and metric definitions
 
@@ -97,7 +147,7 @@ cd backend
 .venv/bin/python -m app.evaluation --years 2022 2023 2024 --max-events-per-season 6
 ```
 
-The command retrieves the chronologically earliest six race events per requested season (with lap timing only; it does not download telemetry), caches FastF1 data, records skipped sessions, and writes `backend/artifacts/model_evaluation.json`. Use `--max-events-per-season 0` to attempt every race in each season or `--output PATH` to choose another report path. `/api/models/metrics` and the Model Insights page read that report. Without a report, the app states “not run” and shows no metrics.
+The command retrieves the chronologically earliest six race events per requested season (with lap timing only; it does not download telemetry), caches FastF1 data, records skipped sessions, and writes `backend/artifacts/model_evaluation.json`. Use `--max-events-per-season 0` to attempt every race in each season or `--output PATH` to choose another report path. `/api/models/metrics` and the Model Insights page read that report. Without a report, the app states “not run” and shows no metrics. No evaluation report or measured accuracy metrics are committed with this project, so no model score is claimed here.
 
 The target is each driver's eligible green-flag lap time after three earlier eligible laps from the same held-out race have calibrated the race-specific pace intercept. Those first three laps are calibration only and are not scored. Unique races are ordered by season and round; the last 20% are held out as test races. All laps from those race IDs are excluded from the training-race tyre-degradation fit. The model uses a median pairwise within-stint, same-compound tyre-age slope fitted only on training races, plus the simulator's fixed compound offsets. The comparator predicts a constant lap time equal to the median of the same three calibration laps.
 
@@ -105,19 +155,10 @@ Eligibility requires a finite positive lap time, known dry compound, tyre life a
 
 No advanced machine-learning estimator is currently trained. The Model Insights page reports that decision explicitly; a more complex model should be considered only after this race-held-out baseline and its feature/validation limits justify it. Re-run the command to reproduce the report. The output records the model version, split, training/test race IDs, filters, training fit support, retrieval successes/failures and generation time.
 
-## Architecture
+## API and configuration
 
-```text
-React + TypeScript + Recharts (Vite / Nginx)
-                  │ HTTP JSON (/api)
-                  ▼
-FastAPI + Pydantic ── strategy simulation / bounded optimiser
-                  │
-                  └── FastF1 schedule, session loader and local cache
-```
-
-The API and data service are intentionally small; routes handle validation and error responses while calculations and FastF1 normalization live in service modules. CORS origins can be configured with `APEXION_CORS_ORIGINS` (comma-separated). The default allows the local Vite and Compose origins.
+Routes validate requests and return consistent errors; session loading, data normalization and strategy calculations live in backend services. `APEXION_CORS_ORIGINS` accepts a comma-separated allowlist and allows no cross-origin browser origins by default. The standard local and Compose frontends proxy `/api` through their own origin, so broad CORS access is not needed.
 
 ## Known limitations
 
-This version does not implement safety-car scenarios, weather simulation, regulation-aware strategy constraints, traffic-adjusted or validated pace/degradation prediction, trained machine learning, a circuit map, steering telemetry, authentication, shared/cloud scenario storage or a public deployment. Historical finishing classifications, sectors, stints, and telemetry are shown only where the FastF1 session provides them. Scenarios are saved only in the current browser.
+This version does not implement safety-car scenarios, weather simulation, regulation-aware strategy constraints, traffic-adjusted or validated pace/degradation prediction, trained machine learning, a circuit map, steering telemetry, authentication, shared/cloud scenario storage or a public deployment. Historical finishing classifications, sectors, stints, and telemetry are shown only where the FastF1 session provides them. Scenarios are saved only in the current browser. CI and local lint suppress only the React Hooks `set-state-in-effect` rule because the existing feature components use effects to synchronize loading/selection state; hook order and dependency checks remain enabled.

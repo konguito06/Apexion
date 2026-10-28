@@ -37,11 +37,11 @@ if (!python) {
   process.exit(1);
 }
 
-run(npm, ['install'], frontend, 'Installing frontend dependencies');
+run(npm, ['ci'], frontend, 'Installing locked frontend dependencies');
 
 if (!existsSync(venvPython)) {
   run(python, ['-m', 'venv', resolve(backend, '.venv')], root, 'Creating backend virtual environment');
 }
 
-run(venvPython, ['-m', 'pip', 'install', '-r', resolve(backend, 'requirements.txt')], backend, 'Installing backend dependencies');
+run(venvPython, ['-m', 'pip', 'install', '-r', resolve(backend, 'requirements-dev.txt')], backend, 'Installing backend and development dependencies');
 console.log('\n[setup] Apexion is ready. Start both services with: npm run dev');

@@ -51,7 +51,6 @@ def _load(year: int, event: str, session_name: str) -> Any:
     results = getattr(session, "results", None)
     has_results = results is not None and not results.empty
     has_laps = laps is not None and not laps.empty
-    has_timed_laps = has_laps and "LapTime" in laps and laps["LapTime"].notna().any()
     if not has_laps and not has_results:
         raise RuntimeError(
             "FastF1 returned no classification or lap data for this session. Check upstream availability; "

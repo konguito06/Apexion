@@ -4,21 +4,31 @@ services:
       context: .
       dockerfile: backend/Dockerfile
     environment:
-      APEXION_CORS_ORIGINS: ${APEXION_CORS_ORIGINS:-http://localhost:8080}
+      APEXION_CORS_ORIGINS: ${APEXION_CORS_ORIGINS:-}
       F1_USERNAME: ${F1_USERNAME:-}
       F1_PASSWORD: ${F1_PASSWORD:-}
+      PORT: 8000
     ports:
-      - "8000:8000"
+      - "${HOST_PORT:-8000}:8000"
     volumes:
       - fastf1-cache:/app/backend/.cache/fastf1
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/health', timeout=4)"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
     restart: unless-stopped
 
   frontend:
     build:
       context: .
       dockerfile: frontend/Dockerfile
+      args:
+        VITE_API_URL: ${VITE_API_URL:-}
     depends_on:
-      - backend
+      backend:
+        condition: service_healthy
     ports:
       - "8080:80"
     restart: unless-stopped

@@ -200,23 +200,32 @@
 button:disabled { cursor: not-allowed; }
 .navigation-backdrop { display: none; }
 .chart, .race-chart { min-width: 0; }
+.main, .content { min-width: 0; max-width: 100%; }
+.alert span { min-width: 0; overflow-wrap: anywhere; }
 .metric small, .empty, .muted { color: #a0a2aa; }
 .chart-foot, .metric-label, .unit { color: #92949c; }
 
 @media (max-width: 680px) {
   .topbar { height: auto; min-height: 52px; flex-wrap: wrap; gap: 8px 0; padding: 8px 12px; }
   .breadcrumbs { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .top-controls { order: 3; flex: 1 0 100%; min-width: 0; justify-content: space-between; gap: 8px; padding: 5px 0 2px; }
-  .top-controls label { min-width: 0; flex: 1; justify-content: space-between; }
+  .top-controls { order: 3; flex: 1 0 100%; min-width: 0; display: grid; grid-template-columns: minmax(80px, .75fr) minmax(0, 1.25fr); gap: 8px; padding: 5px 0 2px; }
+  .top-controls label { min-width: 0; width: 100%; justify-content: space-between; gap: 3px; }
   .top-controls label:nth-child(2) { max-width: none; }
-  .top-controls select { min-width: 0; max-width: 110px; text-overflow: ellipsis; }
-  .top-controls label:nth-child(2) select { max-width: 135px; }
+  .top-controls select { min-width: 0; width: auto; max-width: 100%; flex: 1; text-overflow: ellipsis; }
+  .top-controls label:nth-child(2) select { max-width: 100%; }
+  .top-controls label:nth-child(3) { grid-column: 1 / -1; max-width: 190px; }
   .sidebar { z-index: 5; overflow-y: auto; padding-top: 15px; }
   .navigation-backdrop { display: block; position: fixed; inset: 0; z-index: 4; width: 100%; height: 100%; border: 0; background: #050608a8; }
   .content { padding-top: 19px; }
   .page-heading { margin-bottom: 18px; }
+  .alert { align-items: flex-start; }
+  .alert button { flex: 0 0 auto; }
   .chart-foot { flex-wrap: wrap; gap: 5px 12px; line-height: 1.5; }
   .panel-head { gap: 9px; flex-wrap: wrap; }
+  .content > *, .content .grid, .content .panel { min-width: 0; max-width: 100%; }
+  .grid.two { grid-template-columns: minmax(0, 1fr) !important; }
+  .metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .metric { min-width: 0; }
   .comparison-head { display: none; }
   .compare-row { grid-template-columns: minmax(72px, 1fr) auto auto; }
   .compare-row .scenario-actions { grid-column: 1 / -1; justify-content: flex-end; }

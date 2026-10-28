@@ -9,10 +9,11 @@ type Summary = { year:number; event:string; session:string; date:string; drivers
 type Stint = { start:number; end:number; laps:number; compound:string };
 
 const colors = ['#ef3d42','#55b8c8','#d7b75b','#a48bd1','#6cad84'];
+const noDrivers: string[] = [];
 const lapTime = (value:number|null) => value == null ? '—' : `${Math.floor(value/60)}:${(value%60).toFixed(3).padStart(6,'0')}`;
 
 export function RaceExplorer({summary,driver,setDriver,laps,event,year,session,loading,onOpenDriverAnalysis,onOpenSimulator}:{summary:Summary|null;driver:string;setDriver:(driver:string)=>void;laps:Lap[];event:string;year:number;session:string;loading:boolean;onOpenDriverAnalysis:()=>void;onOpenSimulator:()=>void}) {
-  const drivers = summary?.drivers ?? [];
+  const drivers = summary?.drivers ?? noDrivers;
   const [comparedDrivers,setComparedDrivers] = useState<string[]>([]);
   const [addDriver,setAddDriver] = useState('');
   const [lapFrom,setLapFrom] = useState(1);
@@ -27,7 +28,7 @@ export function RaceExplorer({summary,driver,setDriver,laps,event,year,session,l
     setAddDriver(drivers.find(candidate => candidate !== driver) ?? '');
     setLapFrom(1);
     setLapTo(Math.max(1, summary?.race_laps ?? 1));
-  }, [year,event,session,summary?.race_laps,drivers.join('|'),driver]);
+  }, [year,event,session,summary?.race_laps,drivers,driver]);
 
   useEffect(() => {
     if (!driver || !comparedDrivers.length) { setSeries({}); return; }
@@ -49,7 +50,7 @@ export function RaceExplorer({summary,driver,setDriver,laps,event,year,session,l
     }).finally(() => { if (active) setSeriesLoading(false); });
     setSeries({[driver]:laps});
     return () => { active = false; };
-  }, [year,event,session,driver,laps,comparedDrivers.join('|')]);
+  }, [year,event,session,driver,laps,comparedDrivers]);
 
   const visibleLaps = useMemo(() => (series[driver] ?? laps).filter(row => row.lap >= lapFrom && row.lap <= lapTo && (!representativeOnly || (row.seconds !== null && !row.pit_in && !row.pit_out))), [series,driver,laps,lapFrom,lapTo,representativeOnly]);
   const stintList = useMemo(() => {
@@ -110,7 +111,7 @@ export function RaceExplorer({summary,driver,setDriver,laps,event,year,session,l
     <section className="panel chart-panel race-pace-panel">
       <div className="panel-head"><div><div className="eyebrow">MEASURED LAP TIMES</div><h2>Driver pace progression</h2></div><span className="muted">{seriesLoading?'Loading comparison laps…':`${chartData.length} laps in selected range`}</span></div>
       <div className="race-legend">{comparedDrivers.map((name,index)=><span key={name}><i style={{background:colors[index%colors.length]}}/>{name}</span>)}</div>
-      {chartData.length ? <div className="chart race-chart"><ResponsiveContainer width="100%" height="100%"><LineChart data={chartData}><CartesianGrid stroke="#292b30" vertical={false}/><XAxis dataKey="lap" stroke="#737780" tickLine={false} label={{value:'LAP',position:'insideBottom',offset:-5,fill:'#737780'}}/><YAxis unit="s" stroke="#737780" tickLine={false} domain={['dataMin - 1','dataMax + 1']} reversed/><Tooltip contentStyle={{background:'#17191d',border:'1px solid #34363c'}} formatter={(value,name)=>[value==null?'No time':`${Number(value).toFixed(3)} s`,String(name)]} labelFormatter={value=>`Lap ${value}`}/>{comparedDrivers.map((name,index)=><Line key={name} type="monotone" dataKey={name} name={name} stroke={colors[index%colors.length]} strokeWidth={2} dot={false} connectNulls={false}/>) }{pitLaps.map(row=><ReferenceLine key={`pit-${row.lap}`} x={row.lap} stroke="#55b8c8" strokeDasharray="3 3"/> )}</LineChart></ResponsiveContainer></div> : <div className="empty">No measured lap times match this driver and lap range. Select another driver or range.</div>}
+      {chartData.length ? <div className="chart race-chart" role="img" aria-label={`Measured lap-time progression for ${comparedDrivers.join(', ')}. Horizontal axis is lap; vertical axis is lap time in seconds.`}><ResponsiveContainer width="100%" height="100%"><LineChart data={chartData}><CartesianGrid stroke="#292b30" vertical={false}/><XAxis dataKey="lap" stroke="#737780" tickLine={false} label={{value:'LAP',position:'insideBottom',offset:-5,fill:'#737780'}}/><YAxis unit="s" stroke="#737780" tickLine={false} domain={['dataMin - 1','dataMax + 1']} tickFormatter={value=>Number(value).toFixed(1)} width={50} reversed/><Tooltip contentStyle={{background:'#17191d',border:'1px solid #34363c'}} formatter={(value,name)=>[value==null?'No time':`${Number(value).toFixed(3)} s`,String(name)]} labelFormatter={value=>`Lap ${value}`}/>{comparedDrivers.map((name,index)=><Line key={name} type="monotone" dataKey={name} name={name} stroke={colors[index%colors.length]} strokeWidth={2} dot={false} connectNulls={false}/>) }{pitLaps.map(row=><ReferenceLine key={`pit-${row.lap}`} x={row.lap} stroke="#55b8c8" strokeDasharray="3 3"/> )}</LineChart></ResponsiveContainer></div> : <div className="empty">No measured lap times match this driver and lap range. Select another driver or range.</div>}
       <p className="muted">Pit-in and pit-out laps are shown as cyan vertical markers for the selected driver. Representative-lap filtering removes missing times and pit laps; source observations remain in the table.</p>
     </section>
     <section className="panel">
