@@ -40,11 +40,14 @@ describe('Apexion navigation', () => {
     vi.stubGlobal('fetch', vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
       const url = String(input);
       const changedPit = url.endsWith('/api/simulations') && JSON.parse(String(init?.body)).pit_laps[0] === 30;
-      const payload = url.endsWith('/api/health') ? { status: 'ok' } : url.endsWith('/api/events?season=2024') ? { events: [] } : {
+      const optimizerRun = url.endsWith('/api/strategies/optimise');
+      const optimizerPace = optimizerRun ? Number(JSON.parse(String(init?.body)).baseline_pace_seconds) : 90;
+      const simulation = {
         total_seconds: changedPit ? 5349 : 5350, pit_stops: 1, pit_loss_seconds: 22, green_flag_seconds: 5328, baseline_total_seconds: 5350, baseline_description: 'No-stop baseline', delta_vs_baseline_seconds: 0, explanations: ['Compound choices changed modeled pace by 0.000 s.', 'Stint resets changed tyre-age degradation by 0.000 s.', '1 pit stop(s) add 22.000 s at 22.000 s each.', 'Estimated total is 0.000 s versus baseline.'],
         stints: [{ start_lap: 1, end_lap: 20, laps: 20, compound: 'MEDIUM', estimated_seconds: 1810, baseline_pace_contribution_seconds:1800, compound_adjustment_seconds:7, degradation_seconds:3, green_flag_seconds:1810, pit_loss_after_seconds:22 }, { start_lap: 21, end_lap: 58, laps: 38, compound: 'HARD', estimated_seconds: 3540, baseline_pace_contribution_seconds:3420, compound_adjustment_seconds:28, degradation_seconds:92, green_flag_seconds:3540, pit_loss_after_seconds:0 }], pit_stop_details: [],
-        lap_curve: [{lap:1,seconds:91,compound:'MEDIUM',tyre_age:0}], assumptions: { baseline_pace_seconds:90, source: 'Illustrative deterministic baseline; not fitted to a race.' }, strategy:{race_laps:58,pit_laps:[20],compounds:['MEDIUM','HARD']},
+        lap_curve: [{lap:1,seconds:91,compound:'MEDIUM',tyre_age:0}], assumptions: { baseline_pace_seconds:optimizerPace, degradation_seconds_per_lap_of_tyre_age:.075, pit_loss_seconds_per_stop:22, compound_adjustments_seconds:{SOFT:0,MEDIUM:.35,HARD:.75} }, strategy:{race_laps:58,pit_laps:[20],compounds:['MEDIUM','HARD']},
       };
+      const payload = url.endsWith('/api/health') ? { status: 'ok' } : url.includes('/api/events?') ? { events: [] } : optimizerRun ? { results:[simulation],evaluated:1,candidate_space_size:1,candidate_limit:5000,pit_lap_grid_step:1,minimum_stint_laps:4,max_stops:2,exhaustive_within_constraints:true,search_description:'Test bounded search.' } : simulation;
       return new Response(JSON.stringify(payload), { status: 200, headers: { 'Content-Type': 'application/json' } });
     }));
     render(<App />);
@@ -56,9 +59,16 @@ describe('Apexion navigation', () => {
     fireEvent.click(screen.getByRole('button', { name: /run simulation/i }));
     expect(await screen.findByText('89:09.000')).toBeTruthy();
     fireEvent.click(screen.getByRole('button', { name: /save to comparison/i }));
+    fireEvent.change(screen.getByLabelText(/base pace/i), { target: { value: '91' } });
+    fireEvent.click(screen.getByRole('button', { name: /find candidates/i }));
+    expect(await screen.findByText(/Evaluated 1 of 1 candidates/)).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'Compare' }));
     fireEvent.click(screen.getByRole('button', { name: /strategy comparison/i }));
+    const optimiserOption = await screen.findByRole('option', { name: /optimiser 2/i });
     expect(await screen.findByRole('heading', { name: 'Strategy comparison' })).toBeTruthy();
-    fireEvent.click(screen.getByRole('button', { name: 'Edit' }));
+    fireEvent.change(screen.getByLabelText(/baseline \/ model group/i), { target: { value: (optimiserOption as HTMLOptionElement).value } });
+    expect(await screen.findByText(/Selected model group · 58 laps · pace 91\.00/)).toBeTruthy();
+    fireEvent.click(screen.getAllByRole('button', { name: 'Edit' })[0]);
     expect(await screen.findByRole('button', { name: /update saved strategy/i })).toBeTruthy();
   });
 
