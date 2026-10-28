@@ -4,7 +4,7 @@ from typing import Any
 
 try:
     import fastf1
-    fastf1.Cache.enable_cache(".cache/fastf1")
+    fastf1.Cache.configure(cache_dir=".cache/fastf1")
 except Exception:  # FastF1 is optional at import time; API remains available.
     fastf1 = None
 
