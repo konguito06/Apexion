@@ -3,6 +3,7 @@
 The defaults are illustrative, not fitted to a particular race or car.
 """
 from dataclasses import dataclass
+from itertools import combinations, product
 
 COMPOUNDS = {"SOFT": 0.0, "MEDIUM": 0.35, "HARD": 0.75}
 
@@ -55,25 +56,32 @@ def simulate(strategy: Strategy) -> dict:
 
 
 def optimise(race_laps: int, pit_loss_seconds: float = 22.0, max_stops: int = 2) -> list[dict]:
+    return optimise_with_metadata(race_laps, pit_loss_seconds, max_stops)["results"]
+
+
+def optimise_with_metadata(race_laps: int, pit_loss_seconds: float = 22.0, max_stops: int = 2) -> dict:
     if not 1 <= race_laps <= 100 or not 0 <= max_stops <= 3 or pit_loss_seconds < 0:
         raise ValueError("Invalid optimisation bounds")
     candidates = []
+    evaluated = 0
     for stops in range(max_stops + 1):
         if stops == 0:
-            schedules = [([], ["HARD"])]
+            pit_schedules = [()]
         else:
-            schedules = []
-            for first in range(5, race_laps - stops * 4 + 1):
-                if stops == 1:
-                    schedules.append(([first], ["MEDIUM", "HARD"]))
-                else:
-                    for second in range(first + 4, race_laps - 3):
-                        schedules.append(([first, second], ["SOFT", "MEDIUM", "HARD"]))
-        for pits, compounds in schedules:
-            try:
-                result = simulate(Strategy(race_laps, compounds, pits, pit_loss_seconds=pit_loss_seconds))
-                result["strategy"] = {"pit_laps": pits, "compounds": compounds}
+            # Sample a deterministic, bounded set of candidate laps. Enforce a
+            # four-lap minimum stint, including the final stint.
+            step = max(1, race_laps // 15)
+            pit_options = range(4, race_laps - 3, step)
+            pit_schedules = [pit for pit in combinations(pit_options, stops)
+                             if all(b - a >= 4 for a, b in zip((0, *pit), (*pit, race_laps)))]
+        for pits in pit_schedules:
+            for compounds in product(sorted(COMPOUNDS), repeat=stops + 1):
+                evaluated += 1
+                result = simulate(Strategy(race_laps, list(compounds), list(pits), pit_loss_seconds=pit_loss_seconds))
+                result["strategy"] = {"pit_laps": list(pits), "compounds": list(compounds)}
                 candidates.append(result)
-            except ValueError:
-                continue
-    return sorted(candidates, key=lambda item: item["total_seconds"])[:5]
+    return {
+        "results": sorted(candidates, key=lambda item: item["total_seconds"])[:5],
+        "evaluated": evaluated,
+        "search_description": "All compound sequences across a deterministic, spaced pit-lap grid; minimum four-lap stints; at most three stops.",
+    }

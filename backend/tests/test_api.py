@@ -25,3 +25,24 @@ def test_optimisation_endpoint():
     response = client.post("/api/strategies/optimise", json={"race_laps": 20, "max_stops": 1})
     assert response.status_code == 200
     assert response.json()["results"]
+
+
+def test_optimiser_reports_candidate_space_and_supports_three_stops():
+    response = client.post("/api/strategies/optimise", json={"race_laps": 30, "max_stops": 3})
+    assert response.status_code == 200
+    assert response.json()["evaluated"] > len(response.json()["results"])
+    assert "four-lap" in response.json()["search_description"]
+
+
+def test_telemetry_compare_returns_distance_aligned_data(monkeypatch):
+    monkeypatch.setattr("app.data.compare_telemetry", lambda **_: {
+        "points": [{"distance_percent": 0.0, "first_Speed": 100, "second_Speed": 99}],
+        "channels": ["Speed"], "coordinate": "lap distance (%)",
+    })
+    response = client.post("/api/sessions/telemetry/compare", json={
+        "year": 2024, "event": "Example GP", "first_driver": "AAA", "first_lap": 1,
+        "second_driver": "BBB", "second_lap": 2,
+    })
+    assert response.status_code == 200
+    assert response.json()["points"][0]["distance_percent"] == 0
+    assert response.json()["coordinate"] == "lap distance (%)"
