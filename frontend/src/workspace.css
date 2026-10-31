@@ -356,3 +356,24 @@ footer { flex-wrap: wrap; gap: 6px 16px; line-height: 1.6; }
 @media (max-width: 680px) {
   footer { flex-direction: column; font-size: 8px; }
 }
+
+/* Checkboxes inside toolbars must not inherit the text-input box styles. */
+.race-toolbar input[type="checkbox"],
+.telemetry-controls input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  min-height: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  accent-color: var(--red);
+}
+.race-toolbar .check-label,
+.telemetry-controls .check-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 36px;
+  font-size: 10px;
+  cursor: pointer;
+}
