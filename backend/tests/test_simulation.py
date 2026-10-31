@@ -159,3 +159,13 @@ def test_optimizer_ranks_candidates_by_shared_simulation_total_and_reports_scope
 def test_candidate_generation_rejects_invalid_bounds(race_laps, max_stops):
     with pytest.raises(ValueError):
         generate_candidate_strategies(race_laps, max_stops)
+
+
+def test_clock_uses_minutes_from_one_minute_up():
+    from app.simulation import clock
+    assert clock(98.826) == "1:38.826"
+    assert clock(5269.65) == "1:27:49.650"
+    assert clock(22) == "22.000 s"
+    assert clock(-18.7, signed=True) == "-18.700 s"
+    assert clock(74.887, signed=True) == "+1:14.887"
+    assert clock(59.9996) == "1:00.000"

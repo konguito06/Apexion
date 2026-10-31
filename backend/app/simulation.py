@@ -20,6 +20,18 @@ MAX_OPTIMISER_CANDIDATES = 5_000
 MIN_OPTIMISER_STINT_LAPS = 4
 
 
+def clock(seconds: float, signed: bool = False) -> str:
+    """Timing-screen text: a minute or more reads m:ss.sss (h:mm:ss.sss past an hour); shorter stays in seconds."""
+    rounded = round(abs(seconds), 3)
+    sign = ("+" if seconds > 0 else "-" if seconds < 0 and rounded else "") if signed else ("-" if seconds < 0 and rounded else "")
+    if rounded < 60:
+        return f"{sign}{rounded:.3f} s"
+    hours, rest = divmod(rounded, 3600)
+    minutes, secs = divmod(rest, 60)
+    if hours:
+        return f"{sign}{int(hours)}:{int(minutes):02d}:{secs:06.3f}"
+    return f"{sign}{int(minutes)}:{secs:06.3f}"
+
 @dataclass(frozen=True)
 class Strategy:
     race_laps: int
@@ -255,10 +267,10 @@ def simulate(strategy: Strategy) -> dict[str, Any]:
             "known_limitations": "No traffic, fuel, weather, track evolution, neutralisation, competitor response, or car-specific effects are modelled.",
         },
         "explanations": [
-            f"Compound choices changed modelled lap pace by {compound_delta:+.3f} s versus the no-stop {strategy.compounds[0]} baseline.",
-            f"Stint resets changed tyre-age degradation by {degradation_delta:+.3f} s versus that baseline.",
-            f"{len(strategy.pit_laps)} pit stop(s) add {pit_cost:.3f} s at {strategy.pit_loss_seconds:.3f} s each.",
-            f"Estimated total is {delta:+.3f} s versus the no-stop baseline ({baseline_total:.3f} s).",
+            f"Compound choices changed modelled lap pace by {clock(compound_delta, signed=True)} versus the no-stop {strategy.compounds[0]} baseline.",
+            f"Stint resets changed tyre-age degradation by {clock(degradation_delta, signed=True)} versus that baseline.",
+            f"{len(strategy.pit_laps)} pit stop(s) add {clock(pit_cost)} at {clock(strategy.pit_loss_seconds)} each.",
+            f"Estimated total is {clock(delta, signed=True)} versus the no-stop baseline ({clock(baseline_total)}).",
         ],
     }
 
