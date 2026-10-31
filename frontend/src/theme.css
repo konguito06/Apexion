@@ -341,3 +341,8 @@ footer { border-top: 1px solid var(--border); margin-top: 12px; padding-top: 16p
 .race-toolbar input:not([type="checkbox"]) { min-height: 48px; width: 90px; font: 600 15px var(--mono); }
 .race-toolbar .check-label { min-height: 48px; }
 .race-toolbar .race-simulator-link { min-height: 48px; }
+
+/* Classification result wording */
+.result-time.lapped { color: #c9ccd3; font-weight: 700; letter-spacing: .5px; }
+.result-time.dnf, .result-time.dns, .result-time.dsq { color: var(--red); font-weight: 700; letter-spacing: 1px; }
+.result-status.dnf, .result-status.dns, .result-status.dsq { color: #ff8a98; }

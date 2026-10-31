@@ -4,19 +4,19 @@ import { CartesianGrid, Line, LineChart, ReferenceLine, ResponsiveContainer, Too
 import { request } from '../../api';
 import { driverColors, teamColor } from '../../teams';
 import { paceDomain } from '../../paceDomain';
-import { formatAxisTime, formatDelta, formatTime } from '../../time';
+import { formatAxisTime, formatTime } from '../../time';
+import { resultCells } from '../../results';
 import { DriverSelect } from '../../components/DriverSelect';
 import { DriverAvatar } from '../../components/DriverAvatar';
 import { useDriverInfo } from '../../drivers';
 
 type Lap = { lap:number; seconds:number|null; sector_1:number|null; sector_2:number|null; sector_3:number|null; compound:string; tyre_life:number|null; stint?:number|null; pit_in:boolean; pit_out:boolean };
-type Classification = { driver:string|null; name:string|null; team:string|null; position:number|null; grid:number|null; status:string|null; points:number|null; time:number|null };
+type Classification = { driver:string|null; name:string|null; team:string|null; position:number|null; grid:number|null; status:string|null; points:number|null; time:number|null; laps?:number|null; laps_behind?:number|null };
 type Summary = { year:number; event:string; session:string; date:string; drivers:string[]; race_laps:number; lap_observations:number; pit_stops:number; compounds:string[]; classification:Classification[]; data_source:string; status:string };
 type Stint = { start:number; end:number; laps:number; compound:string };
 
 const colors = ['#ef3d42','#55b8c8','#d7b75b','#a48bd1','#6cad84'];
 const noDrivers: string[] = [];
-const lapTime = (value:number|null) => formatTime(value);
 
 export function RaceExplorer({summary,driver,setDriver,laps,event,year,session,loading,onOpenDriverAnalysis,onOpenSimulator}:{summary:Summary|null;driver:string;setDriver:(driver:string)=>void;laps:Lap[];event:string;year:number;session:string;loading:boolean;onOpenDriverAnalysis:()=>void;onOpenSimulator:()=>void}) {
   const drivers = summary?.drivers ?? noDrivers;
@@ -116,7 +116,7 @@ export function RaceExplorer({summary,driver,setDriver,laps,event,year,session,l
     {seriesError&&<p className="error-text" role="alert">Some comparison data could not be loaded: {seriesError}</p>}
     <section className="panel">
       <div className="panel-head"><div><div className="eyebrow">CLASSIFICATION · {session.toUpperCase()}</div><h2>{event || 'Select a Grand Prix'} · {year}</h2></div><span className="data-badge">{summary?.classification.length ?? 0} classified</span></div>
-      {summary?.classification.length ? <div className="classification-table"><div className="class-row race-class-row class-head"><span>POS</span><span>DRIVER</span><span>TEAM</span><span>GRID</span><span>STATUS</span><span>TIME / PTS</span><span/></div>{summary.classification.map((row,index)=><div className="class-row race-class-row" key={`${row.driver}-${index}`} style={{"--team":teamColor(row.team)??"#4a4e58"} as React.CSSProperties}><b>{row.position??'—'}</b><span><strong>{row.driver??'—'}</strong><small>{row.name??''}</small></span><span>{row.team??'—'}</span><span>{row.grid??'—'}</span><span>{row.status??'—'}</span><span>{row.time===null||row.time===undefined?`${row.points??0} pts`:index===0?lapTime(row.time):row.status==='Finished'?formatDelta(row.time):(row.status??'—').toUpperCase()}</span><button className="text-link" disabled={!row.driver} onClick={()=>{if(row.driver){setDriver(row.driver);onOpenDriverAnalysis();}}}>Analyze <ArrowRight size={12}/></button></div>)}</div> : <div className="empty">Finishing order is unavailable for this session. FastF1 may provide classification only for completed sessions.</div>}
+      {summary?.classification.length ? <div className="classification-table"><div className="class-row race-class-row class-head"><span>POS</span><span>DRIVER</span><span>TEAM</span><span>GRID</span><span>STATUS</span><span>TIME / PTS</span><span/></div>{summary.classification.map((row,index)=><div className="class-row race-class-row" key={`${row.driver}-${index}`} style={{"--team":teamColor(row.team)??"#4a4e58"} as React.CSSProperties}><b>{row.position??'—'}</b><span><strong>{row.driver??'—'}</strong><small>{row.name??''}</small></span><span>{row.team??'—'}</span><span>{row.grid??'—'}</span>{(()=>{const cells=resultCells(row,index===0);return <><span className={`result-status ${cells.kind}`}>{cells.status}</span><span className={`result-time ${cells.kind}`}>{cells.time}</span></>;})()}<button className="text-link" disabled={!row.driver} onClick={()=>{if(row.driver){setDriver(row.driver);onOpenDriverAnalysis();}}}>Analyze <ArrowRight size={12}/></button></div>)}</div> : <div className="empty">Finishing order is unavailable for this session. FastF1 may provide classification only for completed sessions.</div>}
     </section>
     <section className="panel chart-panel race-pace-panel">
       <div className="panel-head"><div><div className="eyebrow">MEASURED LAP TIMES</div><h2>Driver pace progression</h2></div><span className="muted">{seriesLoading?'Loading comparison laps…':`${chartData.length} laps in selected range`}</span></div>
