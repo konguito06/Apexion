@@ -1,10 +1,14 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
-import { Radio } from 'lucide-react';
+import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
+import { Plus, Radio, X } from 'lucide-react';
 import { CartesianGrid, Line, LineChart, ReferenceArea, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import { request } from '../../api';
 import { telemetryRegions, type TelemetryPoint } from './transforms';
 import { driverColors } from '../../teams';
 import { TrackMap } from './TrackMap';
+import { DriverSelect } from '../../components/DriverSelect';
+import { LapSelect } from '../../components/LapSelect';
+import { DriverAvatar } from '../../components/DriverAvatar';
+import { useDriverInfo, type DriverInfo } from '../../drivers';
 
 type Lap = {lap:number;seconds:number|null;sector_1:number|null;sector_2:number|null;sector_3:number|null;compound:string;tyre_life:number|null;pit_in:boolean;pit_out:boolean};
 type Comparison = {points:TelemetryPoint[];channels:string[];coordinate:string;lap_time_delta_seconds:number|null;sector_time_deltas_seconds:Record<string,number|null>;data_source:string};
@@ -51,6 +55,7 @@ export function TelemetryLab({year,event,session,drivers,driver,setDriver,laps,l
     const colors=compare&&secondDriver!==driver?driverColors([driver,secondDriver],teams,['#ef3d42','#55b8c8']):{};
     return {first:colors[driver]??'#ef3d42',second:(compare&&secondDriver!==driver?colors[secondDriver]:undefined)??'#55b8c8'};
   },[compare,driver,secondDriver,teams]);
+  const driverInfo=useDriverInfo();
   const xKey=compare?'distance_m':'Distance';
   const regions=useMemo(()=>telemetryRegions(points,xKey,compare),[points,xKey,compare]);
   const load=async()=>{
@@ -82,14 +87,25 @@ export function TelemetryLab({year,event,session,drivers,driver,setDriver,laps,l
   return <>
     <section className="panel telemetry-lab-panel">
       <div className="panel-head"><div><div className="eyebrow">PUBLIC CAR TELEMETRY · MEASURED CHANNELS</div><h2>Telemetry Lab</h2></div><Radio size={18}/></div>
-      <div className="telemetry-controls">
-        <label>Driver <select value={driver} onChange={e=>setDriver(e.target.value)} disabled={!drivers.length}>{drivers.map(name=><option key={name}>{name}</option>)}</select></label>
-        <label>Lap <select aria-label="Lap" value={lapOptions.includes(lap)?lap:(lapOptions[0]??'')} onChange={e=>setLap(Number(e.target.value))} disabled={!lapOptions.length}>{lapOptions.length?lapOptions.map(number=><option key={number} value={number}>Lap {number}</option>):<option value="">No laps</option>}</select></label>
-        <label className="check-label"><input type="checkbox" checked={compare} onChange={e=>setCompare(e.target.checked)}/> Compare two laps</label>
-        {compare&&<>
-          <label>Second driver <select value={secondDriver} onChange={e=>setSecondDriver(e.target.value)} disabled={!drivers.length}>{drivers.map(name=><option key={name}>{name}</option>)}</select></label>
-          <label>Second lap <select aria-label="Second lap" value={secondLapOptions.includes(secondLap)?secondLap:(secondLapOptions[0]??'')} onChange={e=>setSecondLap(Number(e.target.value))} disabled={!secondLapOptions.length}>{secondLapOptions.length?secondLapOptions.map(number=><option key={number} value={number}>Lap {number}</option>):<option value="">No laps</option>}</select></label>
-        </>}
+      <div className="telemetry-slots">
+        <div className="driver-slot" style={{'--slot':traceColors.first} as CSSProperties}>
+          <span className="slot-tag">DRIVER A</span>
+          <DriverSelect label="Driver" hideLabel drivers={drivers} value={driver} onChange={setDriver}/>
+          <LapSelect label="Lap" laps={laps.filter(row=>row.lap>=1)} value={lap} onChange={setLap}/>
+        </div>
+        {compare ? <>
+          <div className="slot-vs" aria-hidden="true">VS</div>
+          <div className="driver-slot" style={{'--slot':traceColors.second} as CSSProperties}>
+            <span className="slot-tag">DRIVER B</span>
+            <button type="button" className="slot-remove" aria-label="Remove comparison driver" onClick={()=>setCompare(false)}><X size={14}/></button>
+            <DriverSelect label="Second driver" hideLabel drivers={drivers} value={secondDriver} onChange={setSecondDriver}/>
+            <LapSelect label="Second lap" caption="Lap" laps={secondLaps.filter(row=>row.lap>=1)} value={secondLap} onChange={setSecondLap}/>
+          </div>
+        </> : <button type="button" className="add-slot" onClick={()=>setCompare(true)} disabled={!drivers.length}>
+          <Plus size={22} aria-hidden="true"/><b>Compare with another driver</b><small>Overlay a second lap and see who is faster where</small>
+        </button>}
+      </div>
+      <div className="telemetry-actions">
         <button className="primary" onClick={load} disabled={busy||loading||!lapOptions.length||(compare&&!secondLapOptions.length)}>{busy?'Loading…':'Load telemetry'}</button>
       </div>
       <p className="muted">{message.replace(/\.$/,'')}. FastF1 source channels only; no steering values are inferred. {compare?'Comparison is restricted to this selected season, event and session.':'Change driver or lap to inspect another observation.'}</p>
@@ -100,7 +116,12 @@ export function TelemetryLab({year,event,session,drivers,driver,setDriver,laps,l
     </section>
     {points.length>0&&channels.length>0 ? <>
       <TrackMap points={points} compare={compare} first={{label:`${driver} · Lap ${lap}`,color:traceColors.first}} second={{label:`${secondDriver} · Lap ${secondLap}`,color:traceColors.second}}/>
-      <div className="telemetry-channel-grid">{channels.map(channel=>{
+      <div className="telemetry-channel-grid">
+        <section className="panel telemetry-channel telemetry-driver-panel" aria-label="Drivers in this telemetry view">
+          <DriverCard info={driverInfo(driver)} color={traceColors.first} lap={laps.find(row=>row.lap===lap)} tag={compare?'DRIVER A':'DRIVER'}/>
+          {compare&&<><div className="driver-card-vs"><span>VS</span>{comparison&&<b>{formatDelta(comparison.lap_time_delta_seconds)}</b>}</div><DriverCard info={driverInfo(secondDriver)} color={traceColors.second} lap={secondLaps.find(row=>row.lap===secondLap)} tag="DRIVER B"/></>}
+        </section>
+        {channels.map(channel=>{
         const speed=channel==='Speed';
         const channelRegions=speed?regions:[];
         return <section className="panel telemetry-channel" key={channel}>
@@ -120,4 +141,18 @@ export function TelemetryLab({year,event,session,drivers,driver,setDriver,laps,l
     </> : <section className="panel"><div className="empty large">{busy?'Loading telemetry…':loading?'Loading the selected session…':channels.length===0&&points.length>0?'No supported telemetry channels are available for these laps.':'Load a supported lap to display available speed, throttle, brake, gear and RPM channels with a track map.'}</div></section>}
     {points.length>0&&<div className="data-provenance"><b>{comparison?.data_source??'FastF1 historical telemetry'}</b><span>{year} · {event} · {session}</span><span>{compare?'Actual distance in metres; shared overlapping distance is plotted.':'FastF1 distance in metres along this lap.'}</span></div>}
   </>;
+}
+
+const lapClock=(seconds:number|null|undefined)=>seconds==null?'No time':`${Math.floor(seconds/60)}:${(seconds%60).toFixed(3).padStart(6,'0')}`;
+
+function DriverCard({info,color,lap,tag}:{info:DriverInfo;color:string;lap?:Lap;tag:string}) {
+  return <div className="driver-card" style={{'--team':color} as CSSProperties}>
+    <div className="driver-card-photo"><DriverAvatar info={info} size={92}/>{info.number&&<span className="driver-card-number">{info.number}</span>}</div>
+    <div className="driver-card-info">
+      <span className="slot-tag">{tag}</span>
+      <h3>{info.name??info.code}</h3>
+      <small>{[info.code,info.team,info.country].filter(Boolean).join(' · ')}</small>
+      {lap&&<div className="driver-card-lap"><span>LAP {lap.lap}</span><b>{lapClock(lap.seconds)}</b><i className={`compound ${lap.compound.toLowerCase()}`}>{lap.compound}</i></div>}
+    </div>
+  </div>;
 }

@@ -29,11 +29,11 @@ describe('TelemetryLab',()=>{
     expect(await screen.findByRole('heading',{name:'Speed · km/h'})).toBeTruthy();
     expect(await screen.findByText(/samples · FastF1 lap distance/)).toBeTruthy();
 
-    fireEvent.click(screen.getByRole('checkbox',{name:'Compare two laps'}));
+    fireEvent.click(screen.getByRole('button',{name:/Compare with another driver/}));
     await waitFor(()=>expect(requestMock).toHaveBeenCalledWith(expect.stringContaining('driver=BBB')));
     fireEvent.click(screen.getByRole('button',{name:'Load telemetry'}));
     expect(await screen.findByRole('heading',{name:/Relative time delta/})).toBeTruthy();
-    expect(screen.getByText('+1.200 s')).toBeTruthy();
+    expect(document.querySelector('.telemetry-delta-cards')?.textContent).toContain('+1.200 s');
     expect(screen.getByText('+0.400 s')).toBeTruthy();
   });
 
@@ -43,16 +43,16 @@ describe('TelemetryLab',()=>{
     const props={year:2024,event:'Example GP',session:'Race',drivers:['AAA','BBB'],setDriver:vi.fn(),laps:[lap(1)],loading:false};
     const {rerender}=render(<TelemetryLab {...props} driver=""/>);
     rerender(<TelemetryLab {...props} driver="AAA"/>);
-    fireEvent.click(screen.getByRole('checkbox',{name:'Compare two laps'}));
+    fireEvent.click(screen.getByRole('button',{name:/Compare with another driver/}));
     await waitFor(()=>expect(requestMock).toHaveBeenCalledWith(expect.stringContaining('driver=BBB')));
-    expect((screen.getByRole('combobox',{name:'Second driver'}) as HTMLSelectElement).value).toBe('BBB');
+    expect(screen.getByRole('combobox',{name:'Second driver'}).textContent).toContain('BBB');
   });
 
   it('does not allow a same-lap self comparison',async()=>{
     provideResizeObserver();
     requestMock.mockResolvedValue({laps:[lap(1)]});
     render(<TelemetryLab year={2024} event="Example GP" session="Race" drivers={['AAA']} driver="AAA" setDriver={vi.fn()} laps={[lap(1)]} loading={false}/>);
-    fireEvent.click(screen.getByRole('checkbox',{name:'Compare two laps'}));
+    fireEvent.click(screen.getByRole('button',{name:/Compare with another driver/}));
     await waitFor(()=>expect((screen.getByRole('button',{name:'Load telemetry'}) as HTMLButtonElement).disabled).toBe(false));
     fireEvent.click(screen.getByRole('button',{name:'Load telemetry'}));
     expect(await screen.findByText(/Choose a different compatible driver\/lap pair/)).toBeTruthy();

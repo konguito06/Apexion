@@ -57,7 +57,7 @@ export function TrackMap({points, compare, first, second}:{points:TelemetryPoint
           <p className="muted">Each mini-sector is coloured by the driver who covered it in less time, from FastF1 telemetry time at equal track distance.</p>
         </> : <>
           <div className="speed-scale"><span/><div><small>{Math.round(minSpeed)} km/h</small><small>{Math.round(maxSpeed)} km/h</small></div></div>
-          <p className="muted">Colour shows measured speed along {first.label}. Turn on “Compare two laps” to see which driver is faster in each part of the track.</p>
+          <p className="muted">Colour shows measured speed along {first.label}. Use “Compare with another driver” to see which driver is faster in each part of the track.</p>
         </>}
       </div>
     </div>
