@@ -443,3 +443,32 @@ footer { border-top: 1px solid #ffffff1f; color: #c5c5ca; }
   .push-grid { grid-template-columns: 1fr; }
 }
 .pit-row .driver-tag { justify-self: start; }
+
+/* Track map: per mini-sector gaps */
+.track-gap { font: 700 21px var(--mono); paint-order: stroke; stroke: var(--panel); stroke-width: 6px; stroke-linejoin: round; }
+.mini-gaps { display: grid; gap: 6px; }
+.mini-gaps-label { color: var(--muted); font: 10px var(--mono); }
+.mini-gaps-bars { display: grid; grid-template-columns: repeat(24, 1fr); gap: 2px; height: 120px; border-block: 1px solid var(--border); background: linear-gradient(transparent calc(50% - .5px), #ffffff33 calc(50% - .5px) calc(50% + .5px), transparent calc(50% + .5px)); }
+.mini-gaps-bars > span { position: relative; }
+.mini-gaps-bars i { position: absolute; left: 0; right: 0; border-radius: 1px; }
+.mini-gaps-bars small { position: absolute; bottom: -16px; left: 0; right: 0; color: #6b6b74; font: 8px var(--mono); text-align: center; }
+.mini-gaps-bars > span:nth-child(odd) small { visibility: hidden; }
+
+/* Driver cards: sector times and head-to-head sector gaps */
+.driver-card-sectors { display: flex; gap: 6px; margin-top: 6px; }
+.driver-card-sectors span { display: grid; gap: 1px; min-width: 64px; padding: 4px 8px; border: 1px solid var(--border-strong); background: #0f0f15; color: #fff; font: 600 12px var(--mono); }
+.driver-card-sectors small { color: var(--muted); font-size: 8px; letter-spacing: 1px; }
+.driver-card-sectors span.timing-purple { border-color: #b45cff88; background: #b45cff14; }
+.driver-card-vs { flex-wrap: wrap; }
+.sector-gaps { display: flex; flex-basis: 100%; justify-content: center; gap: 12px; }
+.sector-gaps i { color: #c5c5ca; font: 600 11px var(--mono); font-style: normal; }
+.mini-gaps-bars { margin-bottom: 18px; }
+.pit-row { grid-template-columns: 44px minmax(84px, 1fr) minmax(0, 1.4fr) minmax(84px, auto) minmax(0, 100px); }
+.pit-tyres { flex-wrap: wrap; }
+@media (max-width: 1100px) and (min-width: 681px) {
+  .event-list li { grid-template-columns: 54px 130px minmax(0, 1fr); }
+  .event-drivers { grid-column: 2 / -1; justify-content: flex-start; }
+}
+@media (max-width: 680px) {
+  .pit-row { grid-template-columns: 34px 1fr auto; }
+}

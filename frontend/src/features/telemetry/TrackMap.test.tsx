@@ -20,7 +20,13 @@ describe('TrackMap', () => {
   it('splits mini-sectors between the two compared drivers', () => {
     render(<TrackMap points={lap} compare {...drivers}/>);
     expect(screen.getByRole('heading', { name: 'Who is faster where' })).toBeTruthy();
-    expect(screen.getByRole('img').getAttribute('aria-label')).toBe('Track map: AAA · Lap 1 fastest in 12 and BBB · Lap 1 fastest in 12 of 24 mini-sectors');
+    expect(screen.getByRole('img', { name:'Track map: AAA · Lap 1 fastest in 12 and BBB · Lap 1 fastest in 12 of 24 mini-sectors' })).toBeTruthy();
+    // Gap labels on the map and one bar per mini-sector in the strip.
+    const labels = [...document.querySelectorAll('.track-gap')].map(node => node.textContent);
+    expect(labels).toHaveLength(24);
+    expect(labels[0]).toBe('−0.200');
+    expect(labels[23]).toBe('+0.400');
+    expect(document.querySelectorAll('.mini-gaps-bars > span')).toHaveLength(24);
   });
 
   it('shows a speed map for a single lap', () => {

@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { miniSectorDominance, speedColor, type TelemetryPoint } from './transforms';
+import { miniSectorDominance, speedColor, type MiniSector, type TelemetryPoint } from './transforms';
 
 type Driver = { label:string; color:string };
 type Coordinate = { x:number; y:number };
@@ -32,6 +32,17 @@ export function TrackMap({points, compare, first, second}:{points:TelemetryPoint
   const wins = { first: sectors.filter(sector => sector.winner === 'first').length, second: sectors.filter(sector => sector.winner === 'second').length };
   const gains = { first: sectors.filter(sector => sector.winner === 'first').reduce((sum, sector) => sum + sector.gain, 0), second: sectors.filter(sector => sector.winner === 'second').reduce((sum, sector) => sum + sector.gain, 0) };
   const start = coordinates.find(Boolean);
+  // Mini-sector gap from driver A's point of view: negative means A was quicker there.
+  const signedGap = (sector:MiniSector) => sector.winner === 'first' ? -sector.gain : sector.winner === 'second' ? sector.gain : 0;
+  const valid = coordinates.filter((value):value is Coordinate => value !== null);
+  const centre = { x: valid.reduce((sum, value) => sum + value.x, 0) / valid.length, y: valid.reduce((sum, value) => sum + value.y, 0) / valid.length };
+  const labelAt = (sector:MiniSector) => {
+    const middle = coordinates[Math.round((sector.start + sector.end) / 2)];
+    if (!middle) return null;
+    const dx = middle.x - centre.x, dy = middle.y - centre.y, length = Math.hypot(dx, dy) || 1;
+    return { x: middle.x + dx / length * 46, y: middle.y + dy / length * 46 };
+  };
+  const largestGap = Math.max(.001, ...sectors.map(sector => sector.gain));
 
   return <section className="panel track-map-panel">
     <div className="panel-head"><div><div className="eyebrow">{compare ? `TRACK DOMINANCE · ${MINI_SECTORS} MINI-SECTORS` : 'TRACK MAP · SPEED'}</div><h2>{compare ? 'Who is faster where' : 'Speed around the lap'}</h2></div></div>
@@ -44,6 +55,11 @@ export function TrackMap({points, compare, first, second}:{points:TelemetryPoint
               const previous = coordinates[index], speed = points[index + 1][compare ? 'first_Speed' : 'Speed'];
               return previous && coordinate && typeof speed === 'number' ? <line key={index} x1={previous.x} y1={previous.y} x2={coordinate.x} y2={coordinate.y} stroke={speedColor(speed, minSpeed, maxSpeed)} className="track-segment"/> : null;
             })}
+        {compare && sectors.map((sector, index) => {
+          const at = labelAt(sector);
+          if (!at || !sector.winner || sector.gain < .0005) return null;
+          return <text key={`gap-${index}`} x={at.x} y={at.y} className="track-gap" fill={sector.winner === 'first' ? first.color : second.color} textAnchor="middle" dominantBaseline="middle">{`${signedGap(sector) > 0 ? '+' : '−'}${sector.gain.toFixed(3)}`}</text>;
+        })}
         {start && <><circle cx={start.x} cy={start.y} r={16} className="track-start"/><text x={start.x + 24} y={start.y + 8} className="track-start-label">START</text></>}
       </svg>
       <div className="track-map-legend">
@@ -54,7 +70,18 @@ export function TrackMap({points, compare, first, second}:{points:TelemetryPoint
             <strong>{wins[key]}</strong>
           </div>)}
           <div className="track-share" aria-hidden="true"><span style={{flex:wins.first || .001, background:first.color}}/><span style={{flex:wins.second || .001, background:second.color}}/></div>
-          <p className="muted">Each mini-sector is coloured by the driver who covered it in less time, from FastF1 telemetry time at equal track distance.</p>
+          <div className="mini-gaps" role="img" aria-label={`Time ${first.label} gains or loses in each of the ${MINI_SECTORS} mini-sectors`}>
+            <span className="mini-gaps-label">{first.label} faster ↑</span>
+            <div className="mini-gaps-bars">{sectors.map((sector, index) => {
+              const height = `${Math.max(4, sector.gain / largestGap * 50)}%`;
+              return <span key={index} title={`Mini-sector ${index + 1}: ${sector.winner ? `${first.label} ${signedGap(sector) < 0 ? 'gains' : 'loses'} ${sector.gain.toFixed(3)} s` : 'equal'}`}>
+                <i style={{height, background:sector.winner === 'first' ? first.color : sector.winner === 'second' ? second.color : '#6b7080', ...(sector.winner === 'second' ? {top:'50%'} : {bottom:'50%'})}}/>
+                <small>{index + 1}</small>
+              </span>;
+            })}</div>
+            <span className="mini-gaps-label">{second.label} faster ↓</span>
+          </div>
+          <p className="muted">Each mini-sector is coloured by the driver who covered it in less time. Numbers on the map are {first.label}'s gap there: − means it was quicker, + slower. From FastF1 telemetry time at equal track distance.</p>
         </> : <>
           <div className="speed-scale"><span/><div><small>{Math.round(minSpeed)} km/h</small><small>{Math.round(maxSpeed)} km/h</small></div></div>
           <p className="muted">Colour shows measured speed along {first.label}. Use “Compare with another driver” to see which driver is faster in each part of the track.</p>
