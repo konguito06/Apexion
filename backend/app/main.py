@@ -5,7 +5,7 @@ from fastapi.concurrency import run_in_threadpool
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field, field_validator, model_validator
 
-from . import data, evaluation
+from . import data, evaluation, race_control
 from .simulation import DEFAULT_BASELINE_PACE_SECONDS, DEFAULT_DEGRADATION_SECONDS_PER_LAP, DEFAULT_PIT_LOSS_SECONDS, Strategy, optimise_with_metadata, simulate
 
 app = FastAPI(title="Apexion API", version="0.1.0", description="Historical F1 data and transparent strategy simulation")
@@ -262,6 +262,22 @@ def get_laps(year: int, event: str, driver: str, session: str = "R"):
         return {"laps": data.driver_laps(year, event, driver, session), "data_source": "FastF1 historical data"}
     except Exception as exc:
         raise HTTPException(503, _source_error("lap data", exc)) from exc
+
+
+@app.get("/api/sessions/{year}/{event}/race-control")
+def get_race_control(year: int, event: str, session: str = "R"):
+    try:
+        return {**race_control.race_control(year, event, session), "data_source": "FastF1 race control and timing"}
+    except Exception as exc:
+        raise HTTPException(503, _source_error("race control data", exc)) from exc
+
+
+@app.get("/api/sessions/{year}/{event}/timing")
+def get_session_timing(year: int, event: str, session: str = "R"):
+    try:
+        return {**race_control.timing(year, event, session), "data_source": "FastF1 historical timing"}
+    except Exception as exc:
+        raise HTTPException(503, _source_error("session timing", exc)) from exc
 
 
 @app.get("/api/sessions/{year}/{event}/drivers/{driver}/analysis")

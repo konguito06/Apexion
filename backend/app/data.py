@@ -46,7 +46,8 @@ def _load(year: int, event: str, session_name: str) -> Any:
     if fastf1 is None:
         raise RuntimeError("FastF1 is not installed")
     session = fastf1.get_session(year, event, session_name)
-    session.load(telemetry=True, laps=True, weather=False, messages=False)
+    # Race control messages feed the flags, safety car and penalty timeline.
+    session.load(telemetry=True, laps=True, weather=False, messages=True)
     laps = getattr(session, "laps", None)
     results = getattr(session, "results", None)
     has_results = results is not None and not results.empty
