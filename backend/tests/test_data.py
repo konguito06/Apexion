@@ -225,3 +225,16 @@ def test_unloaded_session_metadata_error_gets_credentials_guidance(monkeypatch):
     monkeypatch.setattr(data, "_load", lambda *_: UnloadedSession())
     with pytest.raises(RuntimeError, match="F1_USERNAME and F1_PASSWORD"):
         data.session_summary(2024, "Example GP")
+
+
+def test_classification_counts_laps_down_from_laps_completed(monkeypatch):
+    session = session_fixture()
+    session.results = pd.DataFrame([
+        {"Abbreviation": "AAA", "Status": "Finished", "Laps": 57, "Time": seconds(5504.742)},
+        {"Abbreviation": "BBB", "Status": "Finished", "Laps": 57, "Time": seconds(74.887)},
+        {"Abbreviation": "CCC", "Status": "Lapped", "Laps": 55, "Time": seconds(20.795)},
+        {"Abbreviation": "DDD", "Status": "Retired", "Laps": 3, "Time": pd.NaT},
+    ])
+    rows = data._classification(session)
+    assert [row["laps_behind"] for row in rows] == [0, 0, 2, 54]
+    assert rows[1]["time"] == 74.887  # over a minute behind, still on the lead lap

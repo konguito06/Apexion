@@ -162,7 +162,14 @@ def _classification(session: Any) -> list[dict]:
         color = None if _missing(color) else str(color).strip().lstrip("#")
         entry["team_color"] = f"#{color.lower()}" if color and len(color) == 6 and all(c in "0123456789abcdefABCDEF" for c in color) else None
         entry["country_code"] = None if _missing(country) or str(country) == "" else str(country)
+        entry["laps"] = _number(item.get("Laps"))
         rows.append(entry)
+    # Laps down is measured from laps completed, never from the time column: lapped cars carry an
+    # unrelated interval there, and a gap of more than a minute does not by itself mean a lap down.
+    completed = [row["laps"] for row in rows if row["laps"] is not None]
+    leader_laps = max(completed) if completed else None
+    for row in rows:
+        row["laps_behind"] = int(leader_laps - row["laps"]) if leader_laps is not None and row["laps"] is not None else None
     return rows
 
 
