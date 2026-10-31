@@ -351,3 +351,8 @@ button:disabled { cursor: not-allowed; }
 .recent-list small { display: block; margin-top: 3px; color: #8b8d95; font-size: 10px; }
 .recent-list svg { flex: none; color: #777981; }
 .recent-year { flex: none; padding: 4px 6px; border: 1px solid #3a3c43; color: #ef7779; font: 10px var(--mono); }
+
+footer { flex-wrap: wrap; gap: 6px 16px; line-height: 1.6; }
+@media (max-width: 680px) {
+  footer { flex-direction: column; font-size: 8px; }
+}
