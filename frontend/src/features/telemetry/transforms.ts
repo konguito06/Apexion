@@ -43,3 +43,34 @@ export function telemetryRegions(points:TelemetryPoint[], coordinateKey:string, 
   });
   return regions;
 }
+
+export type MiniSector = { start:number; end:number; winner:'first'|'second'|null; gain:number };
+
+/** Split an aligned comparison into equal-distance mini-sectors and pick who covered each one faster. */
+export function miniSectorDominance(points:TelemetryPoint[], count = 24):MiniSector[] {
+  const usable = points.filter(point => typeof point.first_elapsed_seconds === 'number' && typeof point.second_elapsed_seconds === 'number');
+  if (usable.length < count + 1 || points.length !== usable.length) return [];
+  const sectors:MiniSector[] = [];
+  for (let index = 0; index < count; index++) {
+    const start = Math.floor(index * (points.length - 1) / count);
+    const end = Math.floor((index + 1) * (points.length - 1) / count);
+    const first = (points[end].first_elapsed_seconds as number) - (points[start].first_elapsed_seconds as number);
+    const second = (points[end].second_elapsed_seconds as number) - (points[start].second_elapsed_seconds as number);
+    const gain = Math.abs(first - second);
+    sectors.push({ start, end, winner: gain < 0.0005 ? null : first < second ? 'first' : 'second', gain });
+  }
+  return sectors;
+}
+
+const speedStops:[number,[number,number,number]][] = [[0,[47,140,255]],[.4,[47,212,119]],[.7,[255,210,63]],[1,[232,16,44]]];
+
+/** Map a speed onto a blue → green → yellow → red scale between the lap's slowest and fastest samples. */
+export function speedColor(speed:number, min:number, max:number):string {
+  const t = max > min ? Math.min(1, Math.max(0, (speed - min) / (max - min))) : .5;
+  const upper = speedStops.findIndex(([stop]) => stop >= t);
+  const [stopB, colorB] = speedStops[Math.max(1, upper)];
+  const [stopA, colorA] = speedStops[Math.max(1, upper) - 1];
+  const local = (t - stopA) / (stopB - stopA || 1);
+  const channel = (index:number) => Math.round(colorA[index] + (colorB[index] - colorA[index]) * local);
+  return `rgb(${channel(0)},${channel(1)},${channel(2)})`;
+}
