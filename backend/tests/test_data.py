@@ -24,7 +24,8 @@ def session_fixture():
         {"Driver": "AAA", "LapNumber": 2, "LapTime": seconds(91), "Sector1Time": seconds(30), "Sector2Time": seconds(30), "Sector3Time": seconds(31), "Compound": "MEDIUM", "TyreLife": 2, "PitInTime": pd.NaT, "PitOutTime": pd.NaT, "Stint": 1},
         {"Driver": "AAA", "LapNumber": 3, "LapTime": seconds(99), "Sector1Time": seconds(33), "Sector2Time": seconds(33), "Sector3Time": seconds(33), "Compound": "HARD", "TyreLife": 1, "PitInTime": seconds(1), "PitOutTime": pd.NaT, "Stint": 2},
     ])
-    results = pd.DataFrame([{"Abbreviation": "AAA", "FullName": "Driver A", "TeamName": "Team A", "Position": 1, "GridPosition": 2, "Status": "Finished", "Points": 25, "Time": seconds(270)}])
+    results = pd.DataFrame([{"Abbreviation": "AAA", "FullName": "Driver A", "TeamName": "Team A", "Position": 1, "GridPosition": 2, "Status": "Finished", "Points": 25, "Time": seconds(270),
+                             "DriverNumber": "7", "HeadshotUrl": "https://example.com/aaa.png", "TeamColor": "3671C6", "CountryCode": "NED"}])
     return type("Session", (), {"laps": laps, "results": results, "date": "2024-01-01", "event": type("Event", (), {"EventName": "Example GP"})()})()
 
 
@@ -36,6 +37,10 @@ def test_summary_includes_classification_compounds_distance_and_pit_count(monkey
     assert summary["compounds"] == ["HARD", "MEDIUM"]
     assert summary["classification"][0]["driver"] == "AAA"
     assert summary["classification"][0]["time"] == 270
+    assert summary["classification"][0]["number"] == "7"
+    assert summary["classification"][0]["headshot_url"] == "https://example.com/aaa.png"
+    assert summary["classification"][0]["team_color"] == "#3671c6"
+    assert summary["classification"][0]["country_code"] == "NED"
     assert summary["status"] == "loaded"
 
 

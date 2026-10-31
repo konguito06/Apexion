@@ -155,6 +155,13 @@ def _classification(session: Any) -> list[dict]:
                 entry[target] = _seconds(value)
             else:
                 entry[target] = None if _missing(value) else str(value)
+        # Driver identity for the pickers and driver cards, exactly as the timing feed provides it.
+        number, headshot, color, country = (item.get(key) for key in ("DriverNumber", "HeadshotUrl", "TeamColor", "CountryCode"))
+        entry["number"] = None if _missing(number) or str(number) == "" else str(number)
+        entry["headshot_url"] = str(headshot) if not _missing(headshot) and str(headshot).startswith("https://") else None
+        color = None if _missing(color) else str(color).strip().lstrip("#")
+        entry["team_color"] = f"#{color.lower()}" if color and len(color) == 6 and all(c in "0123456789abcdefABCDEF" for c in color) else None
+        entry["country_code"] = None if _missing(country) or str(country) == "" else str(country)
         rows.append(entry)
     return rows
 
