@@ -188,3 +188,16 @@ footer { border-top: 1px solid var(--border); margin-top: 12px; padding-top: 16p
   .session-tabs { flex: 1 0 100%; padding: 8px 12px; }
   .session-tabs button { min-width: 58px; min-height: 40px; padding: 0 10px; font-size: 11px; }
 }
+
+/* Team colour marker on classification rows */
+.race-class-row:not(.class-head) > span:nth-child(2) { padding-left: 10px; border-left: 3px solid var(--team, #4a4e58); }
+.race-class-row:not(.class-head) > span:nth-child(3) { color: var(--team, #a9abb2); font-weight: 600; }
+.race-class-row:not(.class-head):nth-child(2) > b { color: #ffd23f; }
+.race-class-row:not(.class-head):nth-child(3) > b { color: #d6d9de; }
+.race-class-row:not(.class-head):nth-child(4) > b { color: #d79a5b; }
+
+.lap-detail-row .compound,
+.race-stints .compound { justify-self: start; }
+.sector-times { display: flex; gap: 14px; }
+.sector-times i { font-style: normal; }
+.lap-detail-row b.timing-fastest::after { content: ' FASTEST'; margin-left: 6px; color: var(--timing-purple); font-size: 8px; letter-spacing: 1px; }
