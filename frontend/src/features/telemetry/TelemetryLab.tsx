@@ -112,15 +112,18 @@ export function TelemetryLab({year,event,session,drivers,driver,setDriver,laps,l
       <p className="muted">{message.replace(/\.$/,'')}. FastF1 source channels only; no steering values are inferred. {compare?'Comparison is restricted to this selected season, event and session.':'Change driver or lap to inspect another observation.'}</p>
       {comparison&&<>
         <div className="telemetry-delta-cards"><div><span>LAP TIME · SECOND − FIRST</span><b>{formatDelta(comparison.lap_time_delta_seconds)}</b></div>{(['sector_1','sector_2','sector_3'] as const).map((key,index)=><div key={key}><span>SECTOR {index+1} · SECOND − FIRST</span><b>{formatDelta(comparison.sector_time_deltas_seconds[key])}</b></div>)}</div>
-        <p className="telemetry-note">Positive delta means the second lap took longer. Lap and sector deltas use FastF1 lap timing; the curve below is relative elapsed time at equal distance from the start of the shared overlap.</p>
+        <p className="telemetry-note">Positive delta means the second lap took longer. Lap and sector deltas use FastF1 lap timing; on the driver cards the quicker sector of the two is purple; the curve below is relative elapsed time at equal distance from the start of the shared overlap.</p>
       </>}
     </section>
     {points.length>0&&channels.length>0 ? <>
       <TrackMap points={points} compare={compare} first={{label:`${driver} · Lap ${lap}`,color:traceColors.first}} second={{label:`${secondDriver} · Lap ${secondLap}`,color:traceColors.second}}/>
       <div className="telemetry-channel-grid">
         <section className="panel telemetry-channel telemetry-driver-panel" aria-label="Drivers in this telemetry view">
-          <DriverCard info={driverInfo(driver)} color={traceColors.first} lap={laps.find(row=>row.lap===lap)} tag={compare?'DRIVER A':'DRIVER'}/>
-          {compare&&<><div className="driver-card-vs"><span>VS</span>{comparison&&<b>{formatDelta(comparison.lap_time_delta_seconds)}</b>}</div><DriverCard info={driverInfo(secondDriver)} color={traceColors.second} lap={secondLaps.find(row=>row.lap===secondLap)} tag="DRIVER B"/></>}
+          <DriverCard info={driverInfo(driver)} color={traceColors.first} lap={laps.find(row=>row.lap===lap)} rival={compare?secondLaps.find(row=>row.lap===secondLap):undefined} tag={compare?'DRIVER A':'DRIVER'}/>
+          {compare&&<><div className="driver-card-vs">
+            <span>VS</span>{comparison&&<b>{formatDelta(comparison.lap_time_delta_seconds)}</b>}
+            {comparison&&<span className="sector-gaps">{(['sector_1','sector_2','sector_3'] as const).map((key,index)=>{const gap=comparison.sector_time_deltas_seconds[key];return <i key={key} style={{color:gap==null||gap===0?undefined:gap>0?traceColors.first:traceColors.second}}>S{index+1} {formatDelta(gap)}</i>;})}</span>}
+          </div><DriverCard info={driverInfo(secondDriver)} color={traceColors.second} lap={secondLaps.find(row=>row.lap===secondLap)} rival={laps.find(row=>row.lap===lap)} tag="DRIVER B"/></>}
         </section>
         {channels.map(channel=>{
         const speed=channel==='Speed';
@@ -146,7 +149,7 @@ export function TelemetryLab({year,event,session,drivers,driver,setDriver,laps,l
 
 const lapClock=(seconds:number|null|undefined)=>formatTime(seconds,3,'No time');
 
-function DriverCard({info,color,lap,tag}:{info:DriverInfo;color:string;lap?:Lap;tag:string}) {
+function DriverCard({info,color,lap,rival,tag}:{info:DriverInfo;color:string;lap?:Lap;rival?:Lap;tag:string}) {
   return <div className="driver-card" style={{'--team':color} as CSSProperties}>
     <div className="driver-card-photo"><DriverAvatar info={info} size={92}/>{info.number&&<span className="driver-card-number">{info.number}</span>}</div>
     <div className="driver-card-info">
@@ -154,6 +157,12 @@ function DriverCard({info,color,lap,tag}:{info:DriverInfo;color:string;lap?:Lap;
       <h3>{info.name??info.code}</h3>
       <small>{[info.code,info.team,info.country].filter(Boolean).join(' · ')}</small>
       {lap&&<div className="driver-card-lap"><span>LAP {lap.lap}</span><b>{lapClock(lap.seconds)}</b><i className={`compound ${lap.compound.toLowerCase()}`}>{lap.compound}</i></div>}
+      {lap&&<div className="driver-card-sectors">{(['sector_1','sector_2','sector_3'] as const).map((key,index)=>{
+        const value=lap[key], other=rival?.[key];
+        // Against a rival, the quicker of the two sectors is purple (as on a head-to-head timing screen).
+        const quicker=value!=null&&other!=null&&value<other;
+        return <span key={key} className={quicker?'timing-purple':undefined}><small>S{index+1}</small>{value==null?'—':value.toFixed(3)}</span>;
+      })}</div>}
     </div>
   </div>;
 }
