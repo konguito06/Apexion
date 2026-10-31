@@ -330,3 +330,24 @@ button:disabled { cursor: not-allowed; }
   .telemetry-delta-cards { grid-template-columns: repeat(2,minmax(0,1fr)); }
   .telemetry-region-legend { font-size: 8px; gap: 6px; }
 }
+
+.recent-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 8px; }
+.recent-list button {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 52px;
+  min-width: 0;
+  padding: 9px 12px;
+  border: 1px solid #2d2f35;
+  background: #131519;
+  color: #c4c5ca;
+  text-align: left;
+  cursor: pointer;
+}
+.recent-list button:hover { border-color: #55575f; background: #1b1d22; color: #fff; }
+.recent-list button > span:nth-child(2) { min-width: 0; flex: 1; }
+.recent-list b { display: block; overflow: hidden; color: #e3e4e8; font: 500 12px 'Space Grotesk'; text-overflow: ellipsis; white-space: nowrap; }
+.recent-list small { display: block; margin-top: 3px; color: #8b8d95; font-size: 10px; }
+.recent-list svg { flex: none; color: #777981; }
+.recent-year { flex: none; padding: 4px 6px; border: 1px solid #3a3c43; color: #ef7779; font: 10px var(--mono); }
