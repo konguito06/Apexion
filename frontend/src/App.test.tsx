@@ -139,3 +139,13 @@ describe('Apexion navigation', () => {
     expect(screen.getByText('+1.200 s')).toBeTruthy();
   });
 });
+
+describe('paceDomain', () => {
+  it('keeps pit-lap outliers from flattening the racing-lap scale', async () => {
+    const { paceDomain } = await import('./paceDomain');
+    const laps = [96, 96.2, 96.4, 96.1, 96.3, 96.5, 96.2, 118, 96.4].map((seconds, i) => ({ lap: i + 1, seconds }));
+    const [low, high] = paceDomain(laps, ['seconds']) as [number, number];
+    expect(low).toBeLessThanOrEqual(96);
+    expect(high).toBeLessThan(100);
+  });
+});
