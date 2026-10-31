@@ -149,6 +149,24 @@ def test_telemetry_alignment_uses_shared_absolute_distance_and_elapsed_time():
     assert result["points"][100]["time_delta_seconds"] == 2
 
 
+def test_telemetry_alignment_includes_track_position_for_the_map():
+    first = [
+        {"Distance": 0, "Speed": 100, "X": 0, "Y": 0, "time_seconds": 0},
+        {"Distance": 100, "Speed": 200, "X": 1000, "Y": 500, "time_seconds": 10},
+    ]
+    second = [
+        {"Distance": 0, "Speed": 90, "time_seconds": 0},
+        {"Distance": 100, "Speed": 180, "time_seconds": 11},
+    ]
+
+    result = data.align_telemetry_points(first, second)
+
+    assert result["channels"] == ["Speed"]
+    assert result["points"][100]["x"] == 500
+    assert result["points"][100]["y"] == 250
+    assert result["points"][-1]["second_elapsed_seconds"] == 11
+
+
 def test_telemetry_alignment_handles_non_overlapping_or_missing_channels():
     result = data.align_telemetry_points(
         [{"Distance": 0, "Speed": 1}, {"Distance": 1, "Speed": 2}],

@@ -259,7 +259,7 @@ def telemetry(year: int, event: str, driver: str, lap_number: int, session_name:
     if lap.empty:
         return []
     frame = lap.iloc[0].get_telemetry().add_distance()
-    fields = [name for name in ("Distance", "Speed", "Throttle", "Brake", "nGear", "RPM", "DRS") if name in frame]
+    fields = [name for name in ("Distance", "Speed", "Throttle", "Brake", "nGear", "RPM", "DRS", "X", "Y") if name in frame]
     result = []
     for _, row in frame.iterrows():
         point = {field: _number(row[field]) for field in fields}
@@ -287,7 +287,7 @@ def align_telemetry_points(first: list[dict], second: list[dict], point_count: i
         unique, indices = np.unique(distances, return_index=True)
         usable_points = [usable[index][0] for index in indices]
         series = {}
-        for channel in ("Speed", "Throttle", "Brake", "nGear", "RPM", "DRS", "time_seconds"):
+        for channel in ("Speed", "Throttle", "Brake", "nGear", "RPM", "DRS", "X", "Y", "time_seconds"):
             values = np.array([point.get(channel) if point.get(channel) is not None else np.nan for point in usable_points], dtype=float)
             valid = np.isfinite(values)
             if valid.sum() >= 2:
@@ -317,6 +317,11 @@ def align_telemetry_points(first: list[dict], second: list[dict], point_count: i
         for label, series in (("first", first_series), ("second", second_series)):
             for channel in channels:
                 row[f"{label}_{channel}"] = round(float(np.interp(distance, *series[channel])), 3)
+        # Track position comes from the first lap (falling back to the second) so both traces share one map.
+        position_series = first_series if "X" in first_series and "Y" in first_series else second_series
+        if "X" in position_series and "Y" in position_series:
+            row["x"] = round(float(np.interp(distance, *position_series["X"])), 1)
+            row["y"] = round(float(np.interp(distance, *position_series["Y"])), 1)
         if first_time is not None and second_time is not None:
             elapsed_first = first_time[index] - first_time_origin
             elapsed_second = second_time[index] - second_time_origin
