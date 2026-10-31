@@ -3,6 +3,7 @@ import { Radio } from 'lucide-react';
 import { CartesianGrid, Line, LineChart, ReferenceArea, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import { request } from '../../api';
 import { telemetryRegions, type TelemetryPoint } from './transforms';
+import { driverColors } from '../../teams';
 
 type Lap = {lap:number;seconds:number|null;sector_1:number|null;sector_2:number|null;sector_3:number|null;compound:string;tyre_life:number|null;pit_in:boolean;pit_out:boolean};
 type Comparison = {points:TelemetryPoint[];channels:string[];coordinate:string;lap_time_delta_seconds:number|null;sector_time_deltas_seconds:Record<string,number|null>;data_source:string};
@@ -10,7 +11,7 @@ const availableChannels=['Speed','Throttle','Brake','nGear','RPM','DRS'];
 const channelUnits:Record<string,string>={Speed:'km/h',Throttle:'%',Brake:'on/off',nGear:'gear',RPM:'rpm',DRS:'state'};
 const formatDelta=(value:number|null|undefined)=>value==null?'Unavailable':`${value>0?'+':''}${value.toFixed(3)} s`;
 
-export function TelemetryLab({year,event,session,drivers,driver,setDriver,laps,loading}:{year:number;event:string;session:string;drivers:string[];driver:string;setDriver:(driver:string)=>void;laps:Lap[];loading:boolean}) {
+export function TelemetryLab({year,event,session,drivers,driver,setDriver,laps,loading,teams={}}:{year:number;event:string;session:string;drivers:string[];driver:string;setDriver:(driver:string)=>void;laps:Lap[];loading:boolean;teams?:Record<string,string|null>}) {
   const [lap,setLap]=useState(1);
   const [compare,setCompare]=useState(false);
   const [secondDriver,setSecondDriver]=useState('');
@@ -43,6 +44,11 @@ export function TelemetryLab({year,event,session,drivers,driver,setDriver,laps,l
     return()=>{active=false;};
   },[compare,year,event,session,secondDriver]);
 
+  // Team colours for the two traces; a same-driver or team-mate comparison falls back to red/cyan.
+  const traceColors=useMemo(()=>{
+    const colors=compare&&secondDriver!==driver?driverColors([driver,secondDriver],teams,['#ef3d42','#55b8c8']):{};
+    return {first:colors[driver]??'#ef3d42',second:(compare&&secondDriver!==driver?colors[secondDriver]:undefined)??'#55b8c8'};
+  },[compare,driver,secondDriver,teams]);
   const xKey=compare?'distance_m':'Distance';
   const regions=useMemo(()=>telemetryRegions(points,xKey,compare),[points,xKey,compare]);
   const load=async()=>{
@@ -99,9 +105,9 @@ export function TelemetryLab({year,event,session,drivers,driver,setDriver,laps,l
           <ResponsiveContainer width="100%" height={230}><LineChart data={points} margin={{top:8,right:12,bottom:4,left:0}}>
             <CartesianGrid stroke="#292b30" vertical={false}/><XAxis tick={{fontSize:10}} minTickGap={28} height={36} dataKey={xKey} type="number" domain={['dataMin','dataMax']} tickFormatter={value=>Math.round(Number(value)).toLocaleString()} stroke="#737780" tickLine={false} label={{value:compare?'TRACK DISTANCE · METRES':'DISTANCE · METRES',position:'insideBottom',offset:0,fill:'#777',fontSize:9}}/><YAxis tick={{fontSize:10}} stroke="#737780" tickLine={false} unit={channel==='Speed'?' km/h':channel==='Throttle'?' %':''} tickFormatter={value=>Number(value).toLocaleString(undefined,{maximumFractionDigits:channel==='RPM'?0:1})} width={channel==='RPM'?65:55}/><Tooltip contentStyle={{background:'#17191d',border:'1px solid #34363c'}} labelFormatter={value=>`Distance ${Number(value).toFixed(1)} m`} formatter={value=>[value==null?'—':`${Number(value).toFixed(2)} ${channelUnits[channel]}`,channel]}/>
             {channelRegions.map((region,index)=><ReferenceArea key={`${region.kind}-${index}`} x1={region.start} x2={region.end} fill={region.kind==='braking'?'#ef3d42':'#55b8c8'} fillOpacity={region.kind==='braking'?0.12:0.10} strokeOpacity={0}/>) }
-            {compare?<><Line dataKey={`first_${channel}`} name={`${driver} · Lap ${lap}`} stroke="#ef3d42" strokeWidth={1.8} dot={false}/><Line dataKey={`second_${channel}`} name={`${secondDriver} · Lap ${secondLap}`} stroke="#55b8c8" strokeWidth={1.8} dot={false}/></>:<Line dataKey={channel} name={`${driver} · Lap ${lap}`} stroke="#ef3d42" strokeWidth={1.8} dot={false}/>}
+            {compare?<><Line dataKey={`first_${channel}`} name={`${driver} · Lap ${lap}`} stroke={traceColors.first} strokeWidth={1.8} dot={false}/><Line dataKey={`second_${channel}`} name={`${secondDriver} · Lap ${secondLap}`} stroke={traceColors.second} strokeWidth={1.8} dot={false}/></>:<Line dataKey={channel} name={`${driver} · Lap ${lap}`} stroke="#ef3d42" strokeWidth={1.8} dot={false}/>}
           </LineChart></ResponsiveContainer>
-          {speed&&<div className="telemetry-legend"><span><i className="red"/>{driver} · Lap {lap}</span>{compare&&<span><i className="cyan"/>{secondDriver} · Lap {secondLap}</span>}<small>{channelRegions.length?'Shaded regions are derived from measured brake/throttle/speed channels.':''}</small></div>}
+          {speed&&<div className="telemetry-legend"><span><i style={{background:traceColors.first}}/>{driver} · Lap {lap}</span>{compare&&<span><i style={{background:traceColors.second}}/>{secondDriver} · Lap {secondLap}</span>}<small>{channelRegions.length?'Shaded regions are derived from measured brake/throttle/speed channels.':''}</small></div>}
         </section>;
       })}</div>
       {timeDeltaAvailable&&<section className="panel telemetry-channel">
