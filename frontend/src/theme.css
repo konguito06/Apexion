@@ -370,3 +370,76 @@ footer { border-top: 1px solid var(--border); margin-top: 12px; padding-top: 16p
 .slot-vs, .driver-card-vs, .vs-badge { color: var(--white); text-shadow: 0 0 18px #ffffff40; }
 footer { border-top: 1px solid #ffffff1f; color: #c5c5ca; }
 .class-row > b { color: var(--white); }
+
+/* ---------- Timing colours (purple / green / yellow) ---------- */
+.timing-purple { color: var(--timing-purple) !important; }
+.timing-green { color: var(--timing-green) !important; }
+.timing-yellow { color: var(--timing-yellow) !important; }
+.timing-legend { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 18px; margin-bottom: 14px; color: #c5c5ca; font: 10px var(--mono); }
+.timing-legend span { display: inline-flex; align-items: center; gap: 6px; }
+.timing-legend i { width: 10px; height: 10px; border-radius: 2px; }
+.timing-legend i.timing-purple { background: var(--timing-purple); }
+.timing-legend i.timing-green { background: var(--timing-green); }
+.timing-legend i.timing-yellow { background: var(--timing-yellow); }
+.timing-legend .check-label { margin-left: auto; }
+
+/* ---------- Race events timeline ---------- */
+.event-filters { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-bottom: 14px; }
+.event-filters > button { min-height: 34px; padding: 0 12px; border: 1px solid var(--border-strong); background: #111118; color: #c5c5ca; font: 700 11px var(--display); letter-spacing: .6px; cursor: pointer; }
+.event-filters > button span { margin-left: 6px; color: var(--muted); font: 10px var(--mono); }
+.event-filters > button.active { border-color: var(--white); background: var(--white); color: #15151e; }
+.event-filters > button.active span { color: #15151e; }
+.event-filters .check-label { margin-left: auto; font-size: 11px; }
+.event-list { display: grid; gap: 2px; max-height: 420px; margin: 0; padding: 0; overflow-y: auto; list-style: none; }
+.event-list li { display: grid; grid-template-columns: 62px 150px minmax(0, 1fr) auto; align-items: center; gap: 12px; padding: 9px 10px; border-left: 2px solid transparent; background: #111118; }
+.event-list li.highlight { border-left-color: var(--white); background: #1b1b25; }
+.event-lap { color: var(--muted); font: 700 10px var(--mono); letter-spacing: 1px; }
+.event-message { color: #d8d8dc; font: 11px var(--mono); line-height: 1.5; }
+.event-drivers { display: flex; flex-wrap: wrap; gap: 4px; justify-content: flex-end; }
+.event-badge { justify-self: start; padding: 3px 8px; border: 1px solid; font: 700 9px var(--mono); letter-spacing: 1px; white-space: nowrap; }
+.event-badge.sc { border-color: #ffd23f88; background: #ffd23f22; color: #ffd23f; }
+.event-badge.yellow { border-color: #ffd23f55; color: #ffd23f; }
+.event-badge.red { border-color: var(--red); background: var(--red); color: #fff; }
+.event-badge.green { border-color: #2fd47788; background: #2fd4771c; color: var(--timing-green); }
+.event-badge.penalty { border-color: var(--white); background: var(--white); color: #15151e; }
+.event-badge.bw { border-color: #fff; background: linear-gradient(135deg, #000 50%, #fff 50%); color: #fff; text-shadow: 0 0 3px #000; }
+.event-badge.muted { border-color: var(--border-strong); color: #a8a8ae; }
+.driver-tag { display: inline-flex; align-items: center; gap: 6px; padding: 2px 8px 2px 2px; border: 1px solid var(--border-strong); border-left: 3px solid var(--team); color: #fff; font: 700 11px var(--display); letter-spacing: .5px; white-space: nowrap; }
+
+/* ---------- Pit stops ---------- */
+.pit-table { display: grid; gap: 2px; }
+.pit-row { display: grid; grid-template-columns: 50px minmax(110px, 1fr) minmax(170px, 1.4fr) 110px 110px; align-items: center; gap: 12px; padding: 8px 10px; background: #111118; font: 12px var(--mono); }
+.pit-row.pit-head { background: transparent; color: var(--muted); font-size: 9px; letter-spacing: 1px; }
+.pit-row > b { color: #fff; }
+.pit-tyres { display: flex; align-items: center; gap: 8px; color: var(--muted); }
+
+/* ---------- Qualifying push laps ---------- */
+.push-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(330px, 1fr)); gap: 10px; }
+.push-card { border: 1px solid var(--border); border-top: 3px solid var(--team); background: #111118; }
+.push-card.highlight { border-color: var(--white); border-top-color: var(--team); }
+.push-card header { display: grid; grid-template-columns: 26px auto minmax(0, 1fr) auto; align-items: center; gap: 10px; padding: 10px 12px; border-bottom: 1px solid var(--border); }
+.push-position { color: #fff; font: 900 italic 18px var(--display); }
+.push-name b { display: block; color: #fff; font: 700 14px var(--display); letter-spacing: .8px; }
+.push-name small, .push-best small { display: block; color: var(--muted); font: 10px var(--mono); }
+.push-best { text-align: right; }
+.push-best b { font: 700 15px var(--mono); }
+.push-row { display: grid; grid-template-columns: 54px repeat(3, 1fr) 88px; align-items: center; gap: 6px; padding: 6px 12px; font: 12px var(--mono); }
+.push-row + .push-row { border-top: 1px solid #1f1f29; }
+.push-row.push-head { color: var(--muted); font-size: 9px; letter-spacing: 1px; }
+.push-row > span:first-child { display: flex; align-items: center; gap: 6px; color: #c5c5ca; }
+.push-row .compound { padding: 0 5px 0 13px; font-size: 8px; }
+.push-row .compound::before { left: 4px; width: 5px; height: 5px; }
+.push-row > b { color: #fff; text-align: right; }
+.push-row.deleted { color: #6b6b74; text-decoration: line-through; }
+.push-row.deleted em { margin-left: 6px; color: var(--red); font-size: 8px; font-style: normal; text-decoration: none; letter-spacing: 1px; }
+
+@media (max-width: 680px) {
+  .event-list li { grid-template-columns: 54px 1fr; }
+  .event-message, .event-drivers { grid-column: 1 / -1; justify-content: flex-start; }
+  .event-filters .check-label, .timing-legend .check-label { margin-left: 0; }
+  .pit-row { grid-template-columns: 34px 1fr auto; }
+  .pit-row .pit-tyres { grid-column: 2 / 4; }
+  .pit-row.pit-head span:nth-child(3), .pit-row.pit-head span:nth-child(5) { display: none; }
+  .push-grid { grid-template-columns: 1fr; }
+}
+.pit-row .driver-tag { justify-self: start; }
