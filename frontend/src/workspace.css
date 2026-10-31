@@ -377,3 +377,52 @@ footer { flex-wrap: wrap; gap: 6px 16px; line-height: 1.6; }
   font-size: 10px;
   cursor: pointer;
 }
+
+/* Touch targets: keep every control comfortably clickable (>= 36px desktop, >= 44px touch). */
+.primary, .secondary { min-height: 38px; height: auto; padding: 0 14px; font-size: 11px; }
+.quiet-button { height: 36px; padding: 0 12px; font-size: 11px; }
+.icon-button { width: 36px; height: 36px; }
+.text-link { min-height: 36px; padding: 8px 0; font-size: 11px; }
+.top-controls select { min-height: 32px; padding: 0 20px 0 4px; }
+.overview-driver select,
+.optimizer-controls select,
+.driver-control select,
+.panel-head select,
+.race-toolbar select,
+.race-toolbar input:not([type="checkbox"]),
+.telemetry-controls select { min-height: 36px; font-size: 11px; }
+.race-class-row .text-link { min-height: 32px; padding: 0 4px; }
+.candidate button,
+.compare-row button,
+.scenario-actions button { min-width: 32px; min-height: 32px; padding: 0 6px; }
+.alert button { min-height: 32px; padding: 0 10px; border: 1px solid #69393b; }
+.nav-item { height: 42px; white-space: nowrap; }
+
+@media (max-width: 680px) {
+  .mobile-toggle { display: grid; place-items: center; width: 40px; height: 40px; margin-right: 6px; }
+  .quiet-button { width: 40px; height: 40px; padding: 0; justify-content: center; font-size: 0; }
+  .icon-button { width: 40px; height: 40px; }
+  .primary, .secondary { min-height: 44px; }
+  .top-controls select { min-height: 36px; }
+  .overview-driver select,
+  .optimizer-controls select,
+  .driver-control select,
+  .panel-head select,
+  .race-toolbar select,
+  .race-toolbar input:not([type="checkbox"]),
+  .telemetry-controls select,
+  .field input,
+  .field select { min-height: 42px; font-size: 16px; }
+  .scenario-actions { gap: 6px; }
+  .scenario-actions button { min-width: 40px; min-height: 40px; padding: 0 6px; }
+  .nav-item { height: 46px; font-size: 14px; }
+}
+
+/* Mid-width screens: keep the topbar from squeezing labels into multiple lines. */
+.breadcrumbs, .top-controls label, .live-status { white-space: nowrap; }
+@media (min-width: 681px) and (max-width: 1180px) {
+  .topbar { height: auto; min-height: 57px; flex-wrap: wrap; gap: 6px 16px; padding: 8px 24px; }
+  .top-controls { flex-wrap: wrap; gap: 6px 18px; }
+  .top-controls label:nth-child(2) select { max-width: 200px; }
+  .content { padding-left: 22px; padding-right: 22px; }
+}
