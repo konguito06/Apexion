@@ -163,6 +163,9 @@ def _classification(session: Any) -> list[dict]:
         entry["team_color"] = f"#{color.lower()}" if color and len(color) == 6 and all(c in "0123456789abcdefABCDEF" for c in color) else None
         entry["country_code"] = None if _missing(country) or str(country) == "" else str(country)
         entry["laps"] = _number(item.get("Laps"))
+        classified = item.get("ClassifiedPosition")
+        # FastF1 gives a number for classified cars and a letter (R, D, E, W, F, N) for the rest.
+        entry["classified"] = None if _missing(classified) or str(classified) == "" else str(classified).isdigit()
         rows.append(entry)
     # Laps down is measured from laps completed, never from the time column: lapped cars carry an
     # unrelated interval there, and a gap of more than a minute does not by itself mean a lap down.
