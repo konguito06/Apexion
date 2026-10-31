@@ -28,8 +28,8 @@ describe('RaceExplorer',()=>{
     const onOpenSimulator=vi.fn();
     render(<RaceExplorer summary={summary} driver="AAA" setDriver={vi.fn()} laps={[lap(1,91),lap(2,90)]} event="Example GP" year={2024} session="Race" loading={false} onOpenDriverAnalysis={onOpenDriverAnalysis} onOpenSimulator={onOpenSimulator}/>);
 
-    fireEvent.change(screen.getByLabelText('Add comparison'),{target:{value:'BBB'}});
-    fireEvent.click(screen.getByRole('button',{name:/add/i}));
+    fireEvent.click(screen.getByRole('combobox',{name:'Add comparison'}));
+    fireEvent.click(screen.getByRole('option',{name:/BBB/}));
     await waitFor(()=>expect(document.querySelector('.race-legend')?.textContent).toContain('BBB'));
     await waitFor(()=>expect(requestMock).toHaveBeenCalledWith(expect.stringContaining('driver=BBB')));
     fireEvent.click(screen.getAllByRole('button',{name:/analyze/i})[0]);

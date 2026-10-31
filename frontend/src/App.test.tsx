@@ -107,7 +107,7 @@ describe('Apexion navigation', () => {
     render(<App />);
     fireEvent.click(screen.getByRole('button', { name: /race explorer/i }));
     expect(await screen.findByText('Example Grand Prix · 2024')).toBeTruthy();
-    expect(await screen.findByText('Driver A')).toBeTruthy();
+    await waitFor(() => expect(document.querySelector('.race-class-row:not(.class-head)')?.textContent).toContain('Driver A'));
     expect(await screen.findByText('91.200 s')).toBeTruthy();
   });
 
@@ -132,11 +132,11 @@ describe('Apexion navigation', () => {
     await waitFor(()=>expect((screen.getByRole('button',{name:'Load telemetry'}) as HTMLButtonElement).disabled).toBe(false));
     fireEvent.click(screen.getByRole('button',{name:'Load telemetry'}));
     expect(await screen.findByRole('heading',{name:'Speed · km/h'})).toBeTruthy();
-    fireEvent.click(screen.getByRole('checkbox',{name:'Compare two laps'}));
+    fireEvent.click(screen.getByRole('button',{name:/Compare with another driver/}));
     await waitFor(()=>expect((screen.getByRole('button',{name:'Load telemetry'}) as HTMLButtonElement).disabled).toBe(false));
     fireEvent.click(screen.getByRole('button',{name:'Load telemetry'}));
     expect(await screen.findByRole('heading',{name:/Relative time delta/})).toBeTruthy();
-    expect(screen.getByText('+1.200 s')).toBeTruthy();
+    expect(document.querySelector('.telemetry-delta-cards')?.textContent).toContain('+1.200 s');
   });
 });
 

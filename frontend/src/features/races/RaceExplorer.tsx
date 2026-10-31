@@ -1,9 +1,12 @@
 import { useEffect, useMemo, useState } from 'react';
-import { ArrowRight, Plus, Route } from 'lucide-react';
+import { ArrowRight, Route, X } from 'lucide-react';
 import { CartesianGrid, Line, LineChart, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import { request } from '../../api';
 import { driverColors, teamColor } from '../../teams';
 import { paceDomain } from '../../paceDomain';
+import { DriverSelect } from '../../components/DriverSelect';
+import { DriverAvatar } from '../../components/DriverAvatar';
+import { useDriverInfo } from '../../drivers';
 
 type Lap = { lap:number; seconds:number|null; sector_1:number|null; sector_2:number|null; sector_3:number|null; compound:string; tyre_life:number|null; stint?:number|null; pit_in:boolean; pit_out:boolean };
 type Classification = { driver:string|null; name:string|null; team:string|null; position:number|null; grid:number|null; status:string|null; points:number|null; time:number|null };
@@ -17,7 +20,7 @@ const lapTime = (value:number|null) => value == null ? '—' : `${Math.floor(val
 export function RaceExplorer({summary,driver,setDriver,laps,event,year,session,loading,onOpenDriverAnalysis,onOpenSimulator}:{summary:Summary|null;driver:string;setDriver:(driver:string)=>void;laps:Lap[];event:string;year:number;session:string;loading:boolean;onOpenDriverAnalysis:()=>void;onOpenSimulator:()=>void}) {
   const drivers = summary?.drivers ?? noDrivers;
   const [comparedDrivers,setComparedDrivers] = useState<string[]>([]);
-  const [addDriver,setAddDriver] = useState('');
+  const driverInfo = useDriverInfo();
   const [lapFrom,setLapFrom] = useState(1);
   const [lapTo,setLapTo] = useState(summary?.race_laps ?? 1);
   const [representativeOnly,setRepresentativeOnly] = useState(false);
@@ -27,7 +30,6 @@ export function RaceExplorer({summary,driver,setDriver,laps,event,year,session,l
 
   useEffect(() => {
     setComparedDrivers(driver && drivers.includes(driver) ? [driver] : []);
-    setAddDriver(drivers.find(candidate => candidate !== driver) ?? '');
     setLapFrom(1);
     setLapTo(Math.max(1, summary?.race_laps ?? 1));
   }, [year,event,session,summary?.race_laps,drivers,driver]);
@@ -94,20 +96,18 @@ export function RaceExplorer({summary,driver,setDriver,laps,event,year,session,l
   }, [series,driver,laps]);
   const pitLaps = (series[driver] ?? laps).filter(row => row.pit_in || row.pit_out);
   const maxLap = Math.max(1,summary?.race_laps ?? laps.at(-1)?.lap ?? 1);
-  const addComparison = () => {
-    if (!addDriver || comparedDrivers.includes(addDriver) || comparedDrivers.length >= 5) return;
-    setComparedDrivers(current => [...current,addDriver]);
-    setAddDriver(drivers.find(candidate => candidate !== driver && !comparedDrivers.includes(candidate) && candidate !== addDriver) ?? '');
+  const addComparison = (candidate:string) => {
+    if (!candidate || comparedDrivers.includes(candidate) || comparedDrivers.length >= 5) return;
+    setComparedDrivers(current => [...current,candidate]);
   };
 
   return <>
     <section className="panel race-toolbar">
-      <label>Driver <select value={driver} onChange={e=>setDriver(e.target.value)} disabled={!drivers.length}>{drivers.map(d=><option key={d}>{d}</option>)}</select></label>
+      <DriverSelect label="Driver" drivers={drivers} value={driver} onChange={setDriver}/>
       <label>Lap from <input aria-label="Lap from" type="number" min="1" max={maxLap} value={lapFrom} onChange={e=>{const next=Math.min(maxLap,Math.max(1,Number(e.target.value)||1));setLapFrom(next);if(next>lapTo)setLapTo(next);}}/></label>
       <label>Lap to <input aria-label="Lap to" type="number" min={lapFrom} max={maxLap} value={lapTo} onChange={e=>setLapTo(Math.min(maxLap,Math.max(lapFrom,Number(e.target.value)||lapFrom)))}/></label>
       <label className="check-label"><input type="checkbox" checked={representativeOnly} onChange={e=>setRepresentativeOnly(e.target.checked)}/> representative laps</label>
-      <label>Add comparison <select value={addDriver} onChange={e=>setAddDriver(e.target.value)}><option value="">Select driver</option>{drivers.filter(d=>!comparedDrivers.includes(d)).map(d=><option key={d}>{d}</option>)}</select></label>
-      <button className="secondary" onClick={addComparison} disabled={!addDriver||comparedDrivers.length>=5}><Plus size={14}/> Add</button>
+      <DriverSelect label="Add comparison" drivers={drivers.filter(d=>!comparedDrivers.includes(d))} value="" onChange={addComparison} placeholder={comparedDrivers.length>=5?'Maximum 5 drivers':'Add a driver'} disabled={comparedDrivers.length>=5}/>
       <button className="secondary race-simulator-link" onClick={onOpenSimulator}><Route size={14}/> Simulate this race</button>
     </section>
     {loading&&<div className="empty" role="status">Loading {year} · {event} · {session} historical session…</div>}
@@ -119,7 +119,7 @@ export function RaceExplorer({summary,driver,setDriver,laps,event,year,session,l
     </section>
     <section className="panel chart-panel race-pace-panel">
       <div className="panel-head"><div><div className="eyebrow">MEASURED LAP TIMES</div><h2>Driver pace progression</h2></div><span className="muted">{seriesLoading?'Loading comparison laps…':`${chartData.length} laps in selected range`}</span></div>
-      <div className="race-legend">{comparedDrivers.map((name,index)=><span key={name}><i style={{background:lineColors[name]??colors[index%colors.length]}}/>{name}</span>)}</div>
+      <div className="race-legend">{comparedDrivers.map((name,index)=><span key={name} className="driver-chip" style={{borderColor:lineColors[name]??colors[index%colors.length]}}><DriverAvatar info={driverInfo(name)} size={22}/><i style={{background:lineColors[name]??colors[index%colors.length]}}/>{name}{name!==driver&&<button type="button" aria-label={`Remove ${name} from comparison`} onClick={()=>setComparedDrivers(current=>current.filter(candidate=>candidate!==name))}><X size={12}/></button>}</span>)}</div>
       {chartData.length ? <div className="chart race-chart" role="img" aria-label={`Measured lap-time progression for ${comparedDrivers.join(', ')}. Horizontal axis is lap; vertical axis is lap time in seconds.`}><ResponsiveContainer width="100%" height="100%"><LineChart data={chartData} margin={{top:6,right:8,bottom:4,left:0}}><CartesianGrid stroke="#292b30" vertical={false}/><XAxis tick={{fontSize:10}} minTickGap={14} height={36} dataKey="lap" stroke="#737780" tickLine={false} label={{value:'LAP',position:'insideBottom',offset:0,fill:'#737780',fontSize:9}}/><YAxis tick={{fontSize:10}} unit="s" stroke="#737780" tickLine={false} domain={paceDomain(chartData,comparedDrivers)} allowDataOverflow tickFormatter={value=>Number(value).toFixed(1)} width={50} reversed/><Tooltip contentStyle={{background:'#17191d',border:'1px solid #34363c'}} formatter={(value,name)=>[value==null?'No time':`${Number(value).toFixed(3)} s`,String(name)]} labelFormatter={value=>`Lap ${value}`}/>{comparedDrivers.map((name,index)=><Line key={name} type="monotone" dataKey={name} name={name} stroke={lineColors[name]??colors[index%colors.length]} strokeWidth={2} dot={false} connectNulls={false}/>) }{pitLaps.map(row=><ReferenceLine key={`pit-${row.lap}`} x={row.lap} stroke="#55b8c8" strokeDasharray="3 3"/> )}</LineChart></ResponsiveContainer></div> : <div className="empty">No measured lap times match this driver and lap range. Select another driver or range.</div>}
       <p className="muted">Pit-in and pit-out laps are shown as cyan vertical markers for the selected driver. Representative-lap filtering removes missing times and pit laps; source observations remain in the table.</p>
     </section>

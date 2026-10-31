@@ -232,3 +232,112 @@ footer { border-top: 1px solid var(--border); margin-top: 12px; padding-top: 16p
   .track-map-body { grid-template-columns: 1fr; }
   .track-map { max-height: 380px; }
 }
+
+/* ---------- Driver and lap pickers ---------- */
+.picker-field { position: relative; display: grid; gap: 6px; min-width: 0; }
+.picker-label { color: #9aa0ab; font: 700 9px var(--mono); letter-spacing: 1.4px; text-transform: uppercase; }
+.driver-avatar { position: relative; display: inline-grid; flex: none; place-items: center; overflow: hidden; border-radius: 50%; background: radial-gradient(circle at 50% 30%, color-mix(in srgb, var(--team) 65%, #fff 0%), color-mix(in srgb, var(--team) 55%, #000)); box-shadow: inset 0 0 0 2px var(--team); color: #fff; }
+.driver-avatar img { width: 100%; height: 100%; object-fit: cover; object-position: top; }
+.driver-avatar b { font: 900 italic 1em var(--display); letter-spacing: .5px; }
+
+.driver-select { min-width: 210px; }
+.driver-select-trigger {
+  display: flex; align-items: center; gap: 10px; width: 100%; min-height: 48px; padding: 6px 12px 6px 6px;
+  border: 1px solid var(--border-strong); border-left: 4px solid var(--team); background: #0d0f13; color: #fff; text-align: left; cursor: pointer;
+  transition: border-color .15s, background .15s;
+}
+.driver-select-trigger:hover:not(:disabled) { background: #14171d; border-color: #4a4f5c; border-left-color: var(--team); }
+.driver-select.open .driver-select-trigger { border-color: var(--red); border-left-color: var(--team); }
+.driver-select-trigger:disabled { opacity: .55; cursor: not-allowed; }
+.ds-text { display: grid; min-width: 0; flex: 1; }
+.ds-text b { display: flex; align-items: baseline; gap: 8px; font: 700 15px var(--display); letter-spacing: .8px; }
+.ds-text b em { color: var(--muted); font: 500 11px var(--mono); font-style: normal; }
+.ds-text small { overflow: hidden; color: #9aa0ab; font: 12px var(--display); text-overflow: ellipsis; white-space: nowrap; }
+.ds-placeholder { flex: 1; padding-left: 6px; color: #9aa0ab; font: 600 13px var(--display); }
+.ds-chevron { flex: none; color: var(--muted); transition: transform .15s; }
+.driver-select.open .ds-chevron { transform: rotate(180deg); color: #fff; }
+.driver-select-menu {
+  position: absolute; z-index: 20; top: calc(100% + 4px); left: 0; width: max(100%, 330px); max-height: 360px; margin: 0; padding: 4px; overflow-y: auto;
+  border: 1px solid var(--border-strong); background: #111318; box-shadow: 0 18px 40px #000a; list-style: none;
+}
+.driver-select-menu li { display: grid; grid-template-columns: auto 26px minmax(0, 1fr) auto; align-items: center; gap: 10px; padding: 6px 10px 6px 6px; border-left: 3px solid var(--team); cursor: pointer; }
+.driver-select-menu li + li { margin-top: 2px; }
+.driver-select-menu li.active { background: #1c2028; }
+.driver-select-menu li[aria-selected="true"] { background: color-mix(in srgb, var(--team) 18%, #111318); }
+.ds-number { color: var(--muted); font: 700 12px var(--mono); text-align: right; }
+.ds-team { color: var(--team); font: 600 11px var(--display); white-space: nowrap; }
+
+.lap-select-row { display: flex; gap: 6px; }
+.lap-select-box { position: relative; flex: 1; min-width: 0; }
+.lap-select-box select { width: 100%; min-height: 48px; padding: 0 34px 0 12px; border: 1px solid var(--border-strong); background: #0d0f13; color: transparent; font: 13px var(--display); appearance: none; cursor: pointer; }
+.lap-select-box select:hover:not(:disabled) { background: #14171d; }
+.lap-select-box select:focus { border-color: var(--red); outline: none; }
+.lap-select-box select option { background: #15181e; color: #eee; }
+.lap-select-box select:disabled + .lap-select-face, .lap-select-box select:disabled { opacity: .55; }
+.lap-select-box > svg { position: absolute; top: 50%; right: 12px; color: var(--muted); transform: translateY(-50%); pointer-events: none; }
+.lap-select-face { position: absolute; inset: 0 34px 0 12px; display: flex; align-items: center; gap: 10px; pointer-events: none; }
+.lap-select-face b { color: #fff; font: 700 13px var(--display); letter-spacing: .8px; white-space: nowrap; }
+.lap-select-face span { color: #d6d9de; font: 500 13px var(--mono); }
+.lap-select-face .compound { padding: 1px 6px 1px 16px; font-size: 9px; }
+.lap-fastest { display: inline-flex; flex: none; align-items: center; gap: 6px; min-height: 48px; padding: 0 12px; border: 1px solid #b45cff55; background: #b45cff12; color: #d6a8ff; font: 700 11px var(--display); letter-spacing: .8px; text-transform: uppercase; cursor: pointer; }
+.lap-fastest:hover:not(:disabled) { border-color: var(--timing-purple); color: #fff; }
+.lap-fastest:disabled { opacity: .4; cursor: default; }
+
+/* ---------- Telemetry: driver slots ---------- */
+.telemetry-slots { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); align-items: stretch; gap: 12px; }
+.driver-slot { position: relative; display: grid; gap: 12px; padding: 16px; border: 1px solid var(--border); border-top: 3px solid var(--slot); background: #0e1014; }
+.slot-tag { color: var(--slot, var(--team, var(--red))); font: 700 10px var(--mono); letter-spacing: 1.8px; }
+.slot-remove { position: absolute; top: 10px; right: 10px; display: grid; place-items: center; width: 32px; height: 32px; border: 1px solid var(--border-strong); background: transparent; color: var(--muted); cursor: pointer; }
+.slot-remove:hover { border-color: var(--red); color: #fff; }
+.slot-vs { display: grid; place-items: center; padding: 0 4px; color: #fff; font: 900 italic 26px var(--display); }
+.add-slot { grid-column: 3; display: grid; place-content: center; justify-items: center; gap: 6px; min-height: 180px; padding: 20px; border: 1px dashed #3d424e; background: transparent; color: #c9ccd3; cursor: pointer; transition: border-color .15s, background .15s; }
+.add-slot:hover:not(:disabled) { border-color: var(--red); background: #e8102c0c; color: #fff; }
+.add-slot svg { color: var(--red); }
+.add-slot b { font: 700 15px var(--display); }
+.add-slot small { color: var(--muted); font-size: 12px; }
+.telemetry-actions { display: flex; justify-content: flex-end; margin-top: 14px; }
+.telemetry-actions .primary { min-width: 200px; margin: 0; }
+.vs-badge { align-self: end; padding-bottom: 12px; color: #fff; font: 900 italic 18px var(--display); }
+.driver-toolbar { align-items: flex-end; }
+.driver-toolbar .driver-select { flex: 0 1 300px; }
+.overview-driver .driver-select { width: 280px; }
+.race-toolbar .driver-select { flex: 0 1 260px; }
+
+/* ---------- Telemetry: driver cards (first slot of the chart grid) ---------- */
+.telemetry-driver-panel { display: grid; align-content: center; gap: 10px; }
+.driver-card { position: relative; display: flex; align-items: center; gap: 16px; padding: 14px; overflow: hidden; border: 1px solid var(--border); background: linear-gradient(110deg, color-mix(in srgb, var(--team) 28%, transparent), transparent 65%); }
+.driver-card::after { content: ''; position: absolute; inset: 0 auto 0 0; width: 4px; background: var(--team); }
+.driver-card-photo { position: relative; flex: none; }
+.driver-card-number { position: absolute; right: -6px; bottom: -4px; min-width: 30px; padding: 1px 6px; background: var(--team); color: #fff; font: 900 italic 15px var(--display); text-align: center; }
+.driver-card-info { display: grid; gap: 3px; min-width: 0; }
+.driver-card-info .slot-tag { color: var(--team); }
+.driver-card-info h3 { margin: 0; overflow: hidden; color: #fff; font: 900 italic 22px var(--display); text-overflow: ellipsis; text-transform: uppercase; white-space: nowrap; }
+.driver-card-info small { color: #b9bec8; font: 11px var(--mono); }
+.driver-card-lap { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-top: 6px; }
+.driver-card-lap span { color: var(--muted); font: 700 10px var(--mono); letter-spacing: 1px; }
+.driver-card-lap b { color: #fff; font: 700 16px var(--mono); }
+.driver-card-vs { display: flex; align-items: center; justify-content: center; gap: 12px; color: #fff; font: 900 italic 18px var(--display); }
+.driver-card-vs b { padding: 2px 8px; border: 1px solid var(--border-strong); color: var(--timing-yellow); font: 700 12px var(--mono); font-style: normal; }
+
+@media (max-width: 900px) {
+  .telemetry-slots { grid-template-columns: 1fr; }
+  .slot-vs { padding: 0; font-size: 20px; }
+  .add-slot { grid-column: auto; min-height: 120px; }
+  .telemetry-actions .primary { width: 100%; }
+}
+@media (max-width: 680px) {
+  .driver-select { min-width: 0; width: 100%; }
+  .driver-select-menu { width: 100%; }
+  .driver-select-menu li { grid-template-columns: auto minmax(0, 1fr) auto; }
+  .driver-select-menu .ds-number { display: none; }
+  .driver-toolbar .driver-select, .overview-driver .driver-select, .race-toolbar .driver-select { flex: 1 1 100%; width: 100%; }
+  .vs-badge { align-self: center; padding: 0; }
+  .driver-card-info h3 { font-size: 18px; }
+}
+
+/* Race Explorer toolbar matches the picker style. */
+.race-toolbar { align-items: flex-end; gap: 12px 16px; }
+.race-toolbar > label:not(.check-label) { color: #9aa0ab; font: 700 9px var(--mono); letter-spacing: 1.4px; text-transform: uppercase; }
+.race-toolbar input:not([type="checkbox"]) { min-height: 48px; width: 90px; font: 600 15px var(--mono); }
+.race-toolbar .check-label { min-height: 48px; }
+.race-toolbar .race-simulator-link { min-height: 48px; }
