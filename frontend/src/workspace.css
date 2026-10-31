@@ -426,3 +426,10 @@ footer { flex-wrap: wrap; gap: 6px 16px; line-height: 1.6; }
   .top-controls label:nth-child(2) select { max-width: 200px; }
   .content { padding-left: 22px; padding-right: 22px; }
 }
+
+.driver-toolbar select { min-height: 36px; padding: 0 8px; font-size: 11px; }
+details > summary { display: flex; align-items: center; min-height: 36px; cursor: pointer; }
+@media (max-width: 680px) {
+  .driver-toolbar select { min-height: 42px; font-size: 16px; }
+  details > summary { min-height: 44px; }
+}
