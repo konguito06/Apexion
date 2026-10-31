@@ -30,7 +30,8 @@ export function TelemetryLab({year,event,session,drivers,driver,setDriver,laps,l
   },[laps,lap]);
   useEffect(()=>{
     const next=drivers.find(candidate=>candidate!==driver)??driver;
-    setSecondDriver(current=>drivers.includes(current)?current:next);
+    // Default to a different driver so the comparison is usable without extra clicks.
+    setSecondDriver(current=>drivers.includes(current)&&current!==driver?current:next);
     setSecondLaps([]);
   },[drivers,driver,year,event,session]);
   useEffect(()=>{
@@ -83,7 +84,7 @@ export function TelemetryLab({year,event,session,drivers,driver,setDriver,laps,l
         </>}
         <button className="primary" onClick={load} disabled={busy||loading||!lapOptions.length||(compare&&!secondLapOptions.length)}>{busy?'Loading…':'Load telemetry'}</button>
       </div>
-      <p className="muted">{message}. FastF1 source channels only; no steering values are inferred. {compare?'Comparison is restricted to this selected season, event and session.':'Change driver or lap to inspect another observation.'}</p>
+      <p className="muted">{message.replace(/\.$/,'')}. FastF1 source channels only; no steering values are inferred. {compare?'Comparison is restricted to this selected season, event and session.':'Change driver or lap to inspect another observation.'}</p>
       {comparison&&<>
         <div className="telemetry-delta-cards"><div><span>LAP TIME · SECOND − FIRST</span><b>{formatDelta(comparison.lap_time_delta_seconds)}</b></div>{(['sector_1','sector_2','sector_3'] as const).map((key,index)=><div key={key}><span>SECTOR {index+1} · SECOND − FIRST</span><b>{formatDelta(comparison.sector_time_deltas_seconds[key])}</b></div>)}</div>
         <p className="telemetry-note">Positive delta means the second lap took longer. Lap and sector deltas use FastF1 lap timing; the curve below is relative elapsed time at equal distance from the start of the shared overlap.</p>

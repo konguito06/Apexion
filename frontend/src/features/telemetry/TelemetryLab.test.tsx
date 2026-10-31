@@ -37,6 +37,17 @@ describe('TelemetryLab',()=>{
     expect(screen.getByText('+0.400 s')).toBeTruthy();
   });
 
+  it('defaults the second driver to someone other than the first driver',async()=>{
+    provideResizeObserver();
+    requestMock.mockResolvedValue({laps:[lap(1)]});
+    const props={year:2024,event:'Example GP',session:'Race',drivers:['AAA','BBB'],setDriver:vi.fn(),laps:[lap(1)],loading:false};
+    const {rerender}=render(<TelemetryLab {...props} driver=""/>);
+    rerender(<TelemetryLab {...props} driver="AAA"/>);
+    fireEvent.click(screen.getByRole('checkbox',{name:'Compare two laps'}));
+    await waitFor(()=>expect(requestMock).toHaveBeenCalledWith(expect.stringContaining('driver=BBB')));
+    expect((screen.getByRole('combobox',{name:'Second driver'}) as HTMLSelectElement).value).toBe('BBB');
+  });
+
   it('does not allow a same-lap self comparison',async()=>{
     provideResizeObserver();
     requestMock.mockResolvedValue({laps:[lap(1)]});
