@@ -47,7 +47,8 @@ def test_seasons_follow_current_calendar_year():
 def test_event_schedule_is_cached_and_normalized(monkeypatch):
     calls = []
     schedule = pd.DataFrame([
-        {"RoundNumber": 1, "EventName": "Opening GP", "Session1": "Practice 1", "Session2": "Race"},
+        {"RoundNumber": 1, "EventName": "Opening GP", "Session1": "Practice 1", "Session2": "Race",
+         "Country": "Bahrain", "Location": "Sakhir", "EventDate": pd.Timestamp("2024-03-02")},
         {"RoundNumber": 0, "EventName": "Pre-season test", "Session1": "Practice 1"},
     ])
     provider = type("FastF1", (), {"get_event_schedule": staticmethod(lambda year, **kwargs: calls.append((year, kwargs)) or schedule)})
@@ -57,7 +58,10 @@ def test_event_schedule_is_cached_and_normalized(monkeypatch):
     first = data.events(2024)
     second = data.events(2024)
 
-    assert first == [{"name": "Opening GP", "round": 1, "sessions": ["Practice 1", "Race"]}]
+    assert first == [{
+        "name": "Opening GP", "round": 1, "sessions": ["Practice 1", "Race"],
+        "country": "Bahrain", "location": "Sakhir", "date": "2024-03-02",
+    }]
     assert second == first
     assert calls == [(2024, {"include_testing": False})]
     data.events.cache_clear()

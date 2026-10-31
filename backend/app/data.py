@@ -118,7 +118,15 @@ def events(year: int) -> list[dict]:
             event_name = row.get("EventName")
             if _missing(event_name) or not sessions:
                 continue
-            result.append({"name": str(event_name), "round": int(round_value), "sessions": sessions})
+            country, location, event_date = row.get("Country"), row.get("Location"), row.get("EventDate")
+            result.append({
+                "name": str(event_name),
+                "round": int(round_value),
+                "sessions": sessions,
+                "country": None if _missing(country) else str(country),
+                "location": None if _missing(location) else str(location),
+                "date": None if _missing(event_date) else str(event_date)[:10],
+            })
         return result
     except Exception as exc:
         raise RuntimeError(
