@@ -9,3 +9,4 @@ frontend/*.tsbuildinfo
 .env.*
 !.env.example
 .pytest_cache/
+graphify-out/
