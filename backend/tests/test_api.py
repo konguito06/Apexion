@@ -126,6 +126,27 @@ def test_telemetry_compare_returns_distance_aligned_data(monkeypatch):
     assert response.json()["lap_time_delta_seconds"] == 1.2
 
 
+def test_telemetry_compare_passes_session_to_data_layer(monkeypatch):
+    calls = []
+
+    def fake_telemetry(year, event, driver, lap, session_name="R"):
+        calls.append(session_name)
+        return [
+            {"Distance": 0.0, "Speed": 100.0, "time_seconds": 0.0},
+            {"Distance": 100.0, "Speed": 200.0 if driver == "AAA" else 190.0, "time_seconds": 2.0},
+        ]
+
+    monkeypatch.setattr("app.data.telemetry", fake_telemetry)
+    monkeypatch.setattr("app.data.driver_laps", lambda *_args, **_kwargs: [])
+    response = client.post("/api/sessions/telemetry/compare", json={
+        "year": 2024, "event": "Example GP", "first_driver": "AAA", "first_lap": 1,
+        "second_driver": "BBB", "second_lap": 2, "session": "Qualifying",
+    })
+    assert response.status_code == 200
+    assert calls == ["Qualifying", "Qualifying"]
+    assert response.json()["channels"] == ["Speed"]
+
+
 def test_unavailable_fastf1_session_explains_optional_auth(monkeypatch):
     def unavailable(*_args, **_kwargs):
         raise RuntimeError("The data you are trying to access has not been loaded yet. See Session.load")

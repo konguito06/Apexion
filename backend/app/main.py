@@ -296,7 +296,9 @@ def get_telemetry(year: int, event: str, driver: str, lap: int = Query(ge=1), se
 @app.post("/api/sessions/telemetry/compare")
 def compare_telemetry(request: TelemetryCompareRequest):
     try:
-        result = data.compare_telemetry(**request.model_dump())
+        fields = request.model_dump()
+        fields["session_name"] = fields.pop("session")
+        result = data.compare_telemetry(**fields)
         if not result["points"]:
             raise HTTPException(404, "Compatible telemetry is unavailable for both selected laps")
         return {**result, "data_source": "FastF1 historical telemetry"}
