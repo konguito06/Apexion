@@ -201,3 +201,13 @@ footer { border-top: 1px solid var(--border); margin-top: 12px; padding-top: 16p
 .sector-times { display: flex; gap: 14px; }
 .sector-times i { font-style: normal; }
 .lap-detail-row b.timing-fastest::after { content: ' FASTEST'; margin-left: 6px; color: var(--timing-purple); font-size: 8px; letter-spacing: 1px; }
+
+/* The whole selector field is clickable: the select fills it and the labels sit on top without catching clicks. */
+.strip-field { padding: 0; }
+.strip-field > span { position: absolute; top: 11px; left: 20px; right: 40px; z-index: 1; pointer-events: none; }
+.strip-field select { height: 100%; min-height: 68px; padding: 28px 40px 10px 20px; }
+@media (max-width: 680px) {
+  .strip-field { padding: 0; }
+  .strip-field > span { top: 9px; left: 14px; right: 34px; }
+  .strip-field select { min-height: 60px; padding: 25px 34px 8px 14px; }
+}
