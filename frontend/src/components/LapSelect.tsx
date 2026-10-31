@@ -1,9 +1,10 @@
 import { useMemo } from 'react';
 import { ChevronDown, Timer } from 'lucide-react';
+import { formatTime } from '../time';
 
 type LapOption = { lap:number; seconds:number|null; compound:string; pit_in:boolean; pit_out:boolean };
 
-const lapTime = (seconds:number|null) => seconds == null ? 'No time' : `${Math.floor(seconds / 60)}:${(seconds % 60).toFixed(3).padStart(6, '0')}`;
+const lapTime = (seconds:number|null) => formatTime(seconds, 3, 'No time');
 
 /** Lap picker whose options carry lap time and tyre, with a one-click jump to the driver's fastest racing lap. */
 export function LapSelect({label, caption = label, laps, value, onChange, disabled = false}:{label:string; caption?:string; laps:LapOption[]; value:number; onChange:(lap:number)=>void; disabled?:boolean}) {

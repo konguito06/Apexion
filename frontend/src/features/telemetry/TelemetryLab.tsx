@@ -5,6 +5,7 @@ import { request } from '../../api';
 import { telemetryRegions, type TelemetryPoint } from './transforms';
 import { driverColors } from '../../teams';
 import { TrackMap } from './TrackMap';
+import { formatDelta as formatSignedTime, formatTime } from '../../time';
 import { DriverSelect } from '../../components/DriverSelect';
 import { LapSelect } from '../../components/LapSelect';
 import { DriverAvatar } from '../../components/DriverAvatar';
@@ -15,7 +16,7 @@ type Comparison = {points:TelemetryPoint[];channels:string[];coordinate:string;l
 // DRS is no longer part of the 2026 regulations; the track map takes its place.
 const availableChannels=['Speed','Throttle','Brake','nGear','RPM'];
 const channelUnits:Record<string,string>={Speed:'km/h',Throttle:'%',Brake:'on/off',nGear:'gear',RPM:'rpm',DRS:'state'};
-const formatDelta=(value:number|null|undefined)=>value==null?'Unavailable':`${value>0?'+':''}${value.toFixed(3)} s`;
+const formatDelta=(value:number|null|undefined)=>formatSignedTime(value,3,'Unavailable');
 
 export function TelemetryLab({year,event,session,drivers,driver,setDriver,laps,loading,teams={}}:{year:number;event:string;session:string;drivers:string[];driver:string;setDriver:(driver:string)=>void;laps:Lap[];loading:boolean;teams?:Record<string,string|null>}) {
   const [lap,setLap]=useState(1);
@@ -143,7 +144,7 @@ export function TelemetryLab({year,event,session,drivers,driver,setDriver,laps,l
   </>;
 }
 
-const lapClock=(seconds:number|null|undefined)=>seconds==null?'No time':`${Math.floor(seconds/60)}:${(seconds%60).toFixed(3).padStart(6,'0')}`;
+const lapClock=(seconds:number|null|undefined)=>formatTime(seconds,3,'No time');
 
 function DriverCard({info,color,lap,tag}:{info:DriverInfo;color:string;lap?:Lap;tag:string}) {
   return <div className="driver-card" style={{'--team':color} as CSSProperties}>

@@ -74,10 +74,10 @@ describe('Apexion navigation', () => {
     fireEvent.click(screen.getByRole('button', { name: /strategy simulator/i }));
     fireEvent.click(screen.getByRole('button', { name: /run simulation/i }));
     expect(await screen.findByText('Strategy outcome')).toBeTruthy();
-    expect(screen.getByText('89:10.000')).toBeTruthy();
+    expect(screen.getByText('1:29:10.000')).toBeTruthy();
     fireEvent.change(screen.getByLabelText(/pit-stop lap/i), { target: { value: '30' } });
     fireEvent.click(screen.getByRole('button', { name: /run simulation/i }));
-    expect(await screen.findByText('89:09.000')).toBeTruthy();
+    expect(await screen.findByText('1:29:09.000')).toBeTruthy();
     fireEvent.click(screen.getByRole('button', { name: /save to comparison/i }));
     fireEvent.change(screen.getByLabelText(/base pace/i), { target: { value: '91' } });
     fireEvent.click(screen.getByRole('button', { name: /find candidates/i }));
@@ -87,7 +87,7 @@ describe('Apexion navigation', () => {
     const optimiserOption = await screen.findByRole('option', { name: /optimiser 2/i });
     expect(await screen.findByRole('heading', { name: 'Strategy comparison' })).toBeTruthy();
     fireEvent.change(screen.getByLabelText(/baseline \/ model group/i), { target: { value: (optimiserOption as HTMLOptionElement).value } });
-    expect(await screen.findByText(/Selected model group · 58 laps · pace 91\.00/)).toBeTruthy();
+    expect(await screen.findByText(/Selected model group · 58 laps · pace 1:31\.00/)).toBeTruthy();
     fireEvent.click(screen.getAllByRole('button', { name: 'Edit' })[0]);
     expect(await screen.findByRole('button', { name: /update saved strategy/i })).toBeTruthy();
   });
@@ -108,7 +108,7 @@ describe('Apexion navigation', () => {
     fireEvent.click(screen.getByRole('button', { name: /race explorer/i }));
     expect(await screen.findByText('Example Grand Prix · 2024')).toBeTruthy();
     await waitFor(() => expect(document.querySelector('.race-class-row:not(.class-head)')?.textContent).toContain('Driver A'));
-    expect(await screen.findByText('91.200 s')).toBeTruthy();
+    expect(await screen.findByText('1:31.200')).toBeTruthy();
   });
 
   it('selects a historical session, loads telemetry and compares two laps through the app shell', async () => {
