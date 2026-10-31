@@ -1,0 +1,190 @@
+/* Apexion pit-wall theme: carbon surfaces, racing-red accent, timing-screen colours. */
+:root {
+  --bg: #0a0b0e;
+  --panel: #121419;
+  --panel-2: #171a20;
+  --border: #23262e;
+  --border-strong: #343843;
+  --text: #f2f3f5;
+  --muted: #8b909b;
+  --red: #e8102c;
+  --red-deep: #a80a1f;
+  --timing-purple: #b45cff;
+  --timing-green: #2fd477;
+  --timing-yellow: #ffd23f;
+  --tyre-soft: #ff3b3b;
+  --tyre-medium: #ffd23f;
+  --tyre-hard: #ececec;
+  --tyre-inter: #3fbf5a;
+  --tyre-wet: #2f8cff;
+  --mono: 'JetBrains Mono', 'DM Mono', monospace;
+  --display: 'Titillium Web', 'DM Sans', sans-serif;
+  font-family: var(--display);
+  color: var(--text);
+  background: var(--bg);
+}
+
+body {
+  background:
+    radial-gradient(1200px 500px at 85% -10%, #e8102c14, transparent 60%),
+    var(--bg);
+}
+
+h1, h2, h3, .brand b, .metric strong, .big-time, .race-info b { font-family: var(--display); }
+h1 { font-size: 30px; font-weight: 900; letter-spacing: .3px; text-transform: uppercase; font-style: italic; }
+h2 { font-size: 17px; font-weight: 700; letter-spacing: .2px; }
+p, .muted { font-family: var(--display); }
+.eyebrow, .side-label, .metric-label { font-family: var(--mono); color: #9aa0ab; letter-spacing: 1.4px; }
+.eyebrow span { color: var(--red); }
+
+/* Sidebar */
+.sidebar { background: linear-gradient(180deg, #0f1115, #0b0c10); border-right-color: var(--border); }
+.brand { border-bottom-color: var(--border); }
+.brand-mark { border: 0; background: var(--red); color: #fff; font-family: var(--display); font-weight: 900; font-style: italic; }
+.brand b { font-weight: 900; font-style: italic; letter-spacing: 3px; font-size: 16px; }
+.brand small { color: var(--red); letter-spacing: 2px; }
+.nav-item { color: #a7acb6; font-family: var(--display); font-size: 13px; font-weight: 600; border-radius: 2px; }
+.nav-item:hover { background: #181b21; }
+.nav-item.active { background: linear-gradient(90deg, #e8102c2e, #e8102c05 70%); color: #fff; }
+.nav-item.active:before { top: 0; bottom: 0; width: 3px; }
+.nav-item i { background: var(--timing-green); box-shadow: 0 0 8px var(--timing-green); }
+.side-bottom { border-top-color: var(--border); }
+
+/* Top bar */
+.topbar { position: relative; background: #0d0f13; border-bottom: 1px solid var(--border); }
+.topbar::before { content: ''; position: absolute; inset: 0 0 auto 0; height: 3px; background: linear-gradient(90deg, var(--red) 0 30%, #e8102c55 60%, transparent); }
+.breadcrumbs { font-family: var(--mono); font-weight: 500; letter-spacing: 1.5px; }
+.live-status { color: var(--timing-green); font-family: var(--mono); letter-spacing: 1px; padding: 5px 9px; border: 1px solid #2fd47733; background: #2fd4770d; }
+.live-status i { background: var(--timing-green); box-shadow: 0 0 0 0 #2fd47799; animation: apexion-pulse 2s infinite; }
+@keyframes apexion-pulse { 70% { box-shadow: 0 0 0 7px #2fd47700; } 100% { box-shadow: 0 0 0 0 #2fd47700; } }
+
+/* Race selection strip */
+.session-strip {
+  display: flex;
+  align-items: stretch;
+  gap: 1px;
+  border-bottom: 1px solid var(--border);
+  background: var(--border);
+}
+.strip-field {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 3px;
+  min-width: 0;
+  padding: 10px 40px 10px 20px;
+  background: #101217;
+  cursor: pointer;
+  transition: background .15s;
+}
+.strip-field:hover { background: #151820; }
+.strip-field:focus-within { box-shadow: inset 0 -2px 0 var(--red); }
+.strip-field > span { display: flex; align-items: baseline; gap: 10px; color: var(--red); font: 700 10px var(--mono); letter-spacing: 1.6px; white-space: nowrap; }
+.strip-field > span em { overflow: hidden; color: #8b909b; font-style: normal; font-weight: 400; letter-spacing: .4px; text-overflow: ellipsis; }
+.strip-field select {
+  appearance: none;
+  width: 100%;
+  min-height: 30px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: #fff;
+  font: 700 19px var(--display);
+  outline: none;
+  cursor: pointer;
+  text-overflow: ellipsis;
+}
+.strip-field select option { background: #15181e; color: #eee; font-size: 14px; }
+.strip-field svg { position: absolute; right: 16px; bottom: 16px; color: #8b909b; pointer-events: none; }
+.strip-season { flex: 0 0 140px; }
+.strip-event { flex: 1 1 380px; }
+.session-tabs { display: flex; align-items: center; gap: 4px; padding: 10px 16px; background: #101217; overflow-x: auto; }
+.session-tabs button {
+  flex: none;
+  min-width: 64px;
+  min-height: 40px;
+  padding: 0 14px;
+  border: 1px solid var(--border-strong);
+  background: #14171d;
+  color: #b9bec8;
+  font: 700 12px var(--display);
+  letter-spacing: 1.2px;
+  cursor: pointer;
+  clip-path: polygon(8px 0, 100% 0, calc(100% - 8px) 100%, 0 100%);
+  transition: background .15s, color .15s;
+}
+.session-tabs button:hover { background: #1c2028; color: #fff; }
+.session-tabs button.active { border-color: var(--red); background: var(--red); color: #fff; }
+
+/* Page heading and surfaces */
+.page-heading { padding-bottom: 18px; border-bottom: 1px solid var(--border); }
+.panel { position: relative; background: linear-gradient(180deg, var(--panel-2), var(--panel)); border-color: var(--border); }
+.panel::before { content: ''; position: absolute; top: -1px; left: -1px; width: 42px; height: 2px; background: var(--red); }
+.metrics { background: var(--panel); border-color: var(--border); }
+.metric { border-right-color: var(--border); }
+.metric::after { content: ''; position: absolute; left: 16px; right: 16px; bottom: 0; height: 2px; background: linear-gradient(90deg, var(--red), transparent); opacity: .7; }
+.metric strong { font-size: 22px; font-weight: 700; }
+.metric-icon { color: var(--red); }
+
+/* Buttons */
+.primary, .secondary, .quiet-button { font-family: var(--display); font-weight: 700; letter-spacing: .8px; text-transform: uppercase; }
+.primary { background: var(--red); border-color: var(--red); clip-path: polygon(0 0, 100% 0, 100% calc(100% - 9px), calc(100% - 9px) 100%, 0 100%); }
+.primary:hover { background: #ff1f3d; }
+.secondary, .quiet-button, .icon-button { border-color: var(--border-strong); background: #14171d; }
+.secondary:hover, .quiet-button:hover, .icon-button:hover { border-color: var(--red); color: #fff; }
+.text-link { color: #ff5468; font-weight: 600; }
+
+/* Form fields */
+.field input, .field select, .race-toolbar select, .race-toolbar input:not([type="checkbox"]),
+.telemetry-controls select, .overview-driver select, .optimizer-controls select, .driver-control select,
+.driver-toolbar select, .panel-head select {
+  border-color: var(--border-strong);
+  background: #0d0f13;
+  color: #fff;
+}
+.field input:focus, .field select:focus { border-color: var(--red); }
+
+/* Timing tables */
+.table-title, .class-head { color: #8b909b; font-family: var(--mono); }
+.lap-row, .lap-detail-row, .class-row { font-family: var(--mono); }
+.lap-row:hover, .lap-detail-row:hover, .class-row:not(.class-head):hover { background: #ffffff06; }
+.lap-row b, .class-row strong { font-family: var(--mono); }
+.class-row > b { color: #fff; font-weight: 700; }
+.timing-fastest { color: var(--timing-purple) !important; }
+.timing-personal { color: var(--timing-green) !important; }
+
+/* Tyre compounds */
+.compound { position: relative; padding: 3px 8px 3px 18px; border-radius: 999px; font-family: var(--mono); font-weight: 700; }
+.compound::before { content: ''; position: absolute; left: 6px; top: 50%; width: 7px; height: 7px; border-radius: 50%; background: currentColor; transform: translateY(-50%); }
+.compound.soft { color: var(--tyre-soft); border-color: #ff3b3b66; }
+.compound.medium { color: var(--tyre-medium); border-color: #ffd23f66; }
+.compound.hard { color: var(--tyre-hard); border-color: #ececec55; }
+.compound.intermediate { color: var(--tyre-inter); border-color: #3fbf5a66; }
+.compound.wet { color: var(--tyre-wet); border-color: #2f8cff66; }
+.stint-segment.soft { background: var(--tyre-soft); }
+.stint-segment.medium { background: var(--tyre-medium); }
+.stint-segment.hard { background: var(--tyre-hard); }
+.stint-segment.intermediate { background: var(--tyre-inter); }
+.stint-segment.wet { background: var(--tyre-wet); }
+
+/* Status surfaces */
+.data-provenance { border-left-color: var(--timing-green); background: #2fd4770b; color: var(--timing-green); font-family: var(--mono); }
+.data-loading { border-color: var(--border-strong); background: var(--panel); font-family: var(--mono); }
+.alert { border-color: #e8102c66; background: #e8102c14; color: #ff8a98; }
+.big-time { font-weight: 900; font-style: italic; font-size: 40px; }
+.delta { color: var(--timing-yellow); }
+.baseline { color: var(--timing-green); }
+footer { border-top: 1px solid var(--border); margin-top: 12px; padding-top: 16px; font-family: var(--mono); }
+
+@media (max-width: 680px) {
+  h1 { font-size: 23px; }
+  .session-strip { flex-wrap: wrap; }
+  .strip-season { flex: 0 0 110px; }
+  .strip-event { flex: 1 1 200px; }
+  .strip-field { padding: 9px 34px 9px 14px; }
+  .strip-field select { font-size: 16px; }
+  .strip-field > span em { display: none; }
+  .session-tabs { flex: 1 0 100%; padding: 8px 12px; }
+  .session-tabs button { min-width: 58px; min-height: 40px; padding: 0 10px; font-size: 11px; }
+}
