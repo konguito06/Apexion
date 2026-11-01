@@ -63,7 +63,7 @@ export function TelemetryLab({year,event,session,drivers,driver,setDriver,laps,l
     if(!event||!driver||!Number.isInteger(lap)||lap<1){setMessage('Choose a loaded driver and a valid lap number.');return;}
     if(compare&&(!secondDriver||!Number.isInteger(secondLap)||secondLap<1||(secondDriver===driver&&secondLap===lap))){setMessage('Choose a different compatible driver/lap pair for comparison.');return;}
     const requestKey=selectedKey;
-    setBusy(true);setMessage('Loading FastF1 telemetry…');setPoints([]);setComparison(null);
+    setBusy(true);setMessage('Loading FastF1 telemetry… the first lap of a session downloads its car data (around 20–60 s); later laps are instant');setPoints([]);setComparison(null);
     try {
       if(compare) {
         const result=await request<Comparison>('/api/sessions/telemetry/compare',{method:'POST',body:JSON.stringify({year,event,session,first_driver:driver,first_lap:lap,second_driver:secondDriver,second_lap:secondLap})});
