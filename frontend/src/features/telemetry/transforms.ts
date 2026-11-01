@@ -62,6 +62,30 @@ export function miniSectorDominance(points:TelemetryPoint[], count = 24):MiniSec
   return sectors;
 }
 
+export type DominanceRun = { winner:'first'|'second'; sectors:number[]; gain:number };
+
+/**
+ * Merge consecutive mini-sectors won by the same driver into one run with the summed time gained.
+ * The lap is a loop, so a run that crosses the start/finish line (last and first mini-sectors) is one run.
+ */
+export function dominanceRuns(sectors:MiniSector[]):DominanceRun[] {
+  const runs:DominanceRun[] = [];
+  sectors.forEach((sector, index) => {
+    const last = runs.at(-1);
+    if (!sector.winner) { runs.push({ winner:'first', sectors:[], gain:0 }); return; }
+    if (last && last.winner === sector.winner && last.sectors.length && last.sectors.at(-1) === index - 1) { last.sectors.push(index); last.gain += sector.gain; return; }
+    runs.push({ winner:sector.winner, sectors:[index], gain:sector.gain });
+  });
+  const real = runs.filter(run => run.sectors.length);
+  const first = real[0], final = real.at(-1);
+  if (real.length > 1 && first && final && first.winner === final.winner && first.sectors[0] === 0 && final.sectors.at(-1) === sectors.length - 1) {
+    final.sectors.push(...first.sectors);
+    final.gain += first.gain;
+    real.shift();
+  }
+  return real;
+}
+
 const speedStops:[number,[number,number,number]][] = [[0,[47,140,255]],[.4,[47,212,119]],[.7,[255,210,63]],[1,[232,16,44]]];
 
 /** Map a speed onto a blue → green → yellow → red scale between the lap's slowest and fastest samples. */

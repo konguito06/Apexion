@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { miniSectorDominance, speedColor, type MiniSector, type TelemetryPoint } from './transforms';
+import { dominanceRuns, miniSectorDominance, speedColor, type DominanceRun, type MiniSector, type TelemetryPoint } from './transforms';
 
 type Driver = { label:string; color:string };
 type Coordinate = { x:number; y:number };
@@ -36,11 +36,14 @@ export function TrackMap({points, compare, first, second}:{points:TelemetryPoint
   const signedGap = (sector:MiniSector) => sector.winner === 'first' ? -sector.gain : sector.winner === 'second' ? sector.gain : 0;
   const valid = coordinates.filter((value):value is Coordinate => value !== null);
   const centre = { x: valid.reduce((sum, value) => sum + value.x, 0) / valid.length, y: valid.reduce((sum, value) => sum + value.y, 0) / valid.length };
-  const labelAt = (sector:MiniSector) => {
-    const middle = coordinates[Math.round((sector.start + sector.end) / 2)];
+  const runs = dominanceRuns(sectors);
+  // Label each run at the mini-sector in its middle (runs can wrap past the start line, so use their own order).
+  const labelAt = (run:DominanceRun) => {
+    const sector = sectors[run.sectors[Math.floor((run.sectors.length - 1) / 2)]];
+    const middle = coordinates[Math.round(run.sectors.length % 2 ? (sector.start + sector.end) / 2 : sector.end)];
     if (!middle) return null;
     const dx = middle.x - centre.x, dy = middle.y - centre.y, length = Math.hypot(dx, dy) || 1;
-    return { x: middle.x + dx / length * 46, y: middle.y + dy / length * 46 };
+    return { x: middle.x + dx / length * 62, y: middle.y + dy / length * 62 };
   };
   const largestGap = Math.max(.001, ...sectors.map(sector => sector.gain));
 
@@ -55,10 +58,13 @@ export function TrackMap({points, compare, first, second}:{points:TelemetryPoint
               const previous = coordinates[index], speed = points[index + 1][compare ? 'first_Speed' : 'Speed'];
               return previous && coordinate && typeof speed === 'number' ? <line key={index} x1={previous.x} y1={previous.y} x2={coordinate.x} y2={coordinate.y} stroke={speedColor(speed, minSpeed, maxSpeed)} className="track-segment"/> : null;
             })}
-        {compare && sectors.map((sector, index) => {
-          const at = labelAt(sector);
-          if (!at || !sector.winner || sector.gain < .0005) return null;
-          return <text key={`gap-${index}`} x={at.x} y={at.y} className="track-gap" fill={sector.winner === 'first' ? first.color : second.color} textAnchor="middle" dominantBaseline="middle">{`${signedGap(sector) > 0 ? '+' : '−'}${sector.gain.toFixed(3)}`}</text>;
+        {compare && runs.map((run, index) => {
+          const at = labelAt(run);
+          if (!at || run.gain < .0005) return null;
+          return <text key={`gap-${index}`} x={at.x} y={at.y} className="track-gap" fill={run.winner === 'first' ? first.color : second.color} textAnchor="middle" dominantBaseline="middle">
+            {`${run.winner === 'first' ? '−' : '+'}${run.gain.toFixed(3)}`}
+            <title>{`Mini-sectors ${run.sectors.map(number => number + 1).join(', ')}: ${run.winner === 'first' ? first.label : second.label} faster by ${run.gain.toFixed(3)} s in total`}</title>
+          </text>;
         })}
         {start && <><circle cx={start.x} cy={start.y} r={16} className="track-start"/><text x={start.x + 24} y={start.y + 8} className="track-start-label">START</text></>}
       </svg>
@@ -81,7 +87,7 @@ export function TrackMap({points, compare, first, second}:{points:TelemetryPoint
             })}</div>
             <span className="mini-gaps-label">{second.label} faster ↓</span>
           </div>
-          <p className="muted">Each mini-sector is coloured by the driver who covered it in less time. Numbers on the map are {first.label}'s gap there: − means it was quicker, + slower. From FastF1 telemetry time at equal track distance.</p>
+          <p className="muted">Each mini-sector is coloured by the driver who covered it in less time. Each number on the map is {first.label}'s total gap over one coloured stretch: − means it was quicker there, + slower. From FastF1 telemetry time at equal track distance.</p>
         </> : <>
           <div className="speed-scale"><span/><div><small>{Math.round(minSpeed)} km/h</small><small>{Math.round(maxSpeed)} km/h</small></div></div>
           <p className="muted">Colour shows measured speed along {first.label}. Use “Compare with another driver” to see which driver is faster in each part of the track.</p>

@@ -22,10 +22,9 @@ describe('TrackMap', () => {
     expect(screen.getByRole('heading', { name: 'Who is faster where' })).toBeTruthy();
     expect(screen.getByRole('img', { name:'Track map: AAA · Lap 1 fastest in 12 and BBB · Lap 1 fastest in 12 of 24 mini-sectors' })).toBeTruthy();
     // Gap labels on the map and one bar per mini-sector in the strip.
-    const labels = [...document.querySelectorAll('.track-gap')].map(node => node.textContent);
-    expect(labels).toHaveLength(24);
-    expect(labels[0]).toBe('−0.200');
-    expect(labels[23]).toBe('+0.400');
+    const labels = [...document.querySelectorAll('.track-gap')].map(node => node.childNodes[0].textContent);
+    // 12 mini-sectors in a row for each driver: one summed label per coloured stretch.
+    expect(labels).toEqual(['−2.400', '+4.800']);
     expect(document.querySelectorAll('.mini-gaps-bars > span')).toHaveLength(24);
   });
 

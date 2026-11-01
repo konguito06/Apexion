@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { miniSectorDominance, speedColor, telemetryRegions } from './transforms';
+import { dominanceRuns, miniSectorDominance, speedColor, telemetryRegions, type MiniSector } from './transforms';
 
 describe('telemetryRegions', () => {
   it('marks brake and acceleration regions from measured channels', () => {
@@ -53,5 +53,24 @@ describe('speedColor', () => {
   it('runs from blue at the slowest point to red at the fastest', () => {
     expect(speedColor(80, 80, 320)).toBe('rgb(47,140,255)');
     expect(speedColor(320, 80, 320)).toBe('rgb(232,16,44)');
+  });
+});
+
+describe('dominanceRuns', () => {
+  const sector = (winner:MiniSector['winner'], gain:number):MiniSector => ({ start:0, end:1, winner, gain });
+
+  it('sums consecutive mini-sectors won by the same driver', () => {
+    const runs = dominanceRuns([sector('first', .1), sector('first', .2), sector('first', .05), sector('second', .3), sector('second', .1)]);
+    expect(runs.map(run => [run.winner, run.sectors, Number(run.gain.toFixed(3))])).toEqual([['first', [0, 1, 2], .35], ['second', [3, 4], .4]]);
+  });
+
+  it('joins a run that crosses the start/finish line', () => {
+    const runs = dominanceRuns([sector('first', .1), sector('second', .2), sector('first', .3)]);
+    expect(runs.map(run => [run.winner, run.sectors, Number(run.gain.toFixed(3))])).toEqual([['second', [1], .2], ['first', [2, 0], .4]]);
+  });
+
+  it('lets an equal mini-sector break a run', () => {
+    const runs = dominanceRuns([sector('first', .1), sector(null, 0), sector('first', .2), sector('second', .1)]);
+    expect(runs.map(run => run.sectors)).toEqual([[0], [2], [3]]);
   });
 });
