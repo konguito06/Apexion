@@ -1,5 +1,6 @@
 """FastF1 adapter with normalized, provenance-preserving response shapes."""
-from functools import lru_cache
+import threading
+from functools import lru_cache, wraps
 from pathlib import Path
 from typing import Any
 from datetime import datetime
@@ -41,13 +42,32 @@ def _seconds(value: Any) -> float | None:
     return None if _missing(value) else round(value.total_seconds(), 3)
 
 
-@lru_cache(maxsize=24)
-def _load(year: int, event: str, session_name: str) -> Any:
+def _single_flight(function):
+    """Let concurrent calls with the same arguments share one load instead of each downloading the session.
+
+    lru_cache only stores a result once it has finished, so parallel requests for a session that is still
+    loading would otherwise all start their own FastF1 download.
+    """
+    locks: dict[tuple, threading.Lock] = {}
+    guard = threading.Lock()
+
+    @wraps(function)
+    def wrapper(*args):
+        with guard:
+            lock = locks.setdefault(args, threading.Lock())
+        with lock:
+            return function(*args)
+
+    wrapper.cache_clear = function.cache_clear
+    return wrapper
+
+
+def _open_session(year: int, event: str, session_name: str, telemetry: bool) -> Any:
     if fastf1 is None:
         raise RuntimeError("FastF1 is not installed")
     session = fastf1.get_session(year, event, session_name)
     # Race control messages feed the flags, safety car and penalty timeline.
-    session.load(telemetry=True, laps=True, weather=False, messages=True)
+    session.load(telemetry=telemetry, laps=True, weather=False, messages=True)
     laps = getattr(session, "laps", None)
     results = getattr(session, "results", None)
     has_results = results is not None and not results.empty
@@ -60,6 +80,21 @@ def _load(year: int, event: str, session_name: str) -> Any:
     # Some sessions expose a classification or event metadata but no lap
     # timings. Keep that useful source data and report the session as partial.
     return session
+
+
+@_single_flight
+@lru_cache(maxsize=24)
+def _load(year: int, event: str, session_name: str) -> Any:
+    """Timing, results and race control only. Car telemetry is roughly ten times the download, so it is not
+    fetched here; pages that only need laps load in a fraction of the time."""
+    return _open_session(year, event, session_name, telemetry=False)
+
+
+@_single_flight
+@lru_cache(maxsize=4)
+def _load_telemetry(year: int, event: str, session_name: str) -> Any:
+    """Full session including car telemetry and position, for the Telemetry Lab only (large: kept to a few sessions)."""
+    return _open_session(year, event, session_name, telemetry=True)
 
 
 @lru_cache(maxsize=32)
@@ -269,7 +304,7 @@ def driver_analysis(year: int, event: str, driver: str, session_name: str = "R")
 
 
 def telemetry(year: int, event: str, driver: str, lap_number: int, session_name: str = "R") -> list[dict]:
-    session = _load(year, event, session_name)
+    session = _load_telemetry(year, event, session_name)
     all_laps = getattr(session, "laps", None)
     if all_laps is None or all_laps.empty or "Driver" not in all_laps or "LapNumber" not in all_laps:
         return []

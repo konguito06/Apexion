@@ -88,6 +88,48 @@ def test_session_loader_caches_loaded_session(monkeypatch):
     data._load.cache_clear()
 
 
+def test_lap_data_loads_without_telemetry_and_telemetry_loads_separately(monkeypatch):
+    load_flags = []
+    session = session_fixture()
+    session.load = lambda **kwargs: load_flags.append(kwargs["telemetry"])
+    monkeypatch.setattr(data, "fastf1", type("FastF1", (), {"get_session": staticmethod(lambda *_: session)}))
+    data._load.cache_clear()
+    data._load_telemetry.cache_clear()
+
+    data._load(2024, "Example GP", "Race")
+    data._load_telemetry(2024, "Example GP", "Race")
+
+    assert load_flags == [False, True]
+    data._load.cache_clear()
+    data._load_telemetry.cache_clear()
+
+
+def test_concurrent_requests_share_one_session_load(monkeypatch):
+    import threading
+    import time
+
+    calls = []
+    session = session_fixture()
+
+    def slow_load(**_):
+        time.sleep(0.2)
+
+    session.load = slow_load
+    monkeypatch.setattr(data, "fastf1", type("FastF1", (), {"get_session": staticmethod(lambda *args: calls.append(args) or session)}))
+    data._load.cache_clear()
+
+    results = []
+    threads = [threading.Thread(target=lambda: results.append(data._load(2024, "Example GP", "Race"))) for _ in range(5)]
+    for thread in threads:
+        thread.start()
+    for thread in threads:
+        thread.join()
+
+    assert len(calls) == 1
+    assert len(results) == 5 and all(result is session for result in results)
+    data._load.cache_clear()
+
+
 def test_evaluation_lap_loader_requests_timing_without_telemetry_and_normalizes_quality(monkeypatch):
     session = session_fixture()
     session.laps["TrackStatus"] = ["1", "1", "4"]
