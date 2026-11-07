@@ -41,8 +41,15 @@ p, .muted { font-family: var(--display); }
 
 /* Sidebar */
 .sidebar { background: linear-gradient(180deg, #0f1115, #0b0c10); border-right-color: var(--border); }
-.brand { border-bottom-color: var(--border); }
-.brand-mark { border: 0; background: var(--red); color: #fff; font-family: var(--display); font-weight: 900; font-style: italic; }
+.brand { width: 100%; background: none; border: 0; border-bottom: 1px solid var(--border); border-radius: 0; color: inherit; font: inherit; text-align: left; cursor: pointer; }
+.brand:focus-visible { outline: 2px solid var(--red); outline-offset: 2px; }
+.brand-mark path { fill: none; stroke: var(--white); stroke-width: 3.2; stroke-miterlimit: 10; }
+.brand-mark .brand-tile { fill: var(--red); stroke: none; }
+.brand-mark .brand-line { stroke-width: 1.9; stroke-linecap: round; }
+.brand-mark { transition: transform .16s ease-out; }
+@media (hover: hover) { .brand:hover .brand-mark { transform: translateX(2px); } }
+.brand:active .brand-mark { transform: translateX(1px) scale(.96); }
+.brand b span { color: var(--red); }
 .brand b { font-weight: 900; font-style: italic; letter-spacing: 3px; font-size: 16px; }
 .brand small { color: var(--red); letter-spacing: 2px; }
 .nav-item { color: #a7acb6; font-family: var(--display); font-size: 13px; font-weight: 600; border-radius: 2px; }

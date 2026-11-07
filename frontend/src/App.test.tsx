@@ -35,6 +35,11 @@ describe('Apexion navigation', () => {
     expect(screen.getByRole('button', { name: 'Open navigation' }).getAttribute('aria-expanded')).toBe('false');
     fireEvent.click(screen.getByRole('button', { name: 'Race Explorer' }));
     expect(screen.getByRole('button', { name: 'Race Explorer' }).getAttribute('aria-current')).toBe('page');
+    const scrollTo = vi.fn();
+    vi.stubGlobal('scrollTo', scrollTo);
+    fireEvent.click(screen.getByRole('button', { name: 'Apexion, go to the top of Overview' }));
+    expect(screen.getByRole('button', { name: 'Overview' }).getAttribute('aria-current')).toBe('page');
+    expect(scrollTo).toHaveBeenCalledWith({ top: 0, behavior: 'auto' });
   });
 
   it('shows a non-blocking loading status while FastF1 event choices are being retrieved', async () => {
