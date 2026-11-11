@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Activity, ArrowDownRight, ArrowUpRight, BookOpen, ChevronDown, CircleHelp, Clock3, Copy, Download, Flag, Gauge, GitCompareArrows, Menu, Radio, Route, Settings2, Trash2, Zap } from 'lucide-react';
+import { Activity, ArrowDownRight, ArrowUpRight, BookOpen, ChevronDown, CircleHelp, Clock3, Copy, Download, Flag, Gauge, GitCompareArrows, LogIn, LogOut, Menu, Radio, Route, Settings2, Trash2, Zap } from 'lucide-react';
 import { CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import { request } from './api';
 import { paceDomain } from './paceDomain';
@@ -10,6 +10,7 @@ import { DriverSelect } from './components/DriverSelect';
 import { RaceExplorer } from './features/races/RaceExplorer';
 import { TelemetryLab } from './features/telemetry/TelemetryLab';
 import { ModelInsights } from './features/insights/ModelInsights';
+import { useAccount } from './features/account/account';
 
 type Section = 'Overview'|'Race Explorer'|'Driver Analysis'|'Telemetry Lab'|'Strategy Simulator'|'Strategy Comparison'|'Model Insights'|'About / Methodology';
 type EventOption = {name:string;round:number;sessions:string[];country?:string|null;location?:string|null;date?:string|null};
@@ -33,6 +34,7 @@ const savedRecentSessions=():RecentSession[]=>{try{return JSON.parse(globalThis.
 
 export default function App(){
   const [section,setSection]=useState<Section>('Overview');
+  const account=useAccount();
   const currentSeason=new Date().getFullYear();
   const [years,setYears]=useState<number[]>(Array.from({length:Math.max(0,currentSeason-2017)},(_,i)=>currentSeason-i));
   const [year,setYear]=useState(currentSeason); const [events,setEvents]=useState<EventOption[]>([]); const [event,setEvent]=useState(''); const [sessionName,setSessionName]=useState('Race');
@@ -69,7 +71,7 @@ export default function App(){
   return <DriverInfoContext.Provider value={driverInfo}><div className="app-shell">
     <aside id="app-navigation" className={`sidebar ${mobileOpen?'open':''}`} aria-label="Main navigation"><button type="button" className="brand" aria-label="Apexion, go to the top of Overview" onClick={goToOverviewTop}><svg className="brand-mark" viewBox="0 0 32 32" aria-hidden="true"><path className="brand-tile" d="M8 1h23l-8 30H0z"/><path d="M6.5 25.5 16 6.5l5 19"/><path className="brand-line" d="M8.8 19.4c4.4-3.2 9.6-3.5 15.2-1"/></svg><div><b>APEX<span>ION</span></b><small>RACE INTELLIGENCE</small></div></button><div className="side-label">WORKSPACE</div><nav aria-label="Workspaces">{sections.map(({name,icon:Icon})=><button key={name} type="button" className={`nav-item ${section===name?'active':''}`} aria-current={section===name?'page':undefined} onClick={()=>{setSection(name);setMobileOpen(false);}}><Icon size={17} aria-hidden="true"/><span>{name}</span>{name==='Strategy Simulator'&&<i aria-hidden="true"/>}</button>)}</nav><div className="side-bottom"><div className="status-dot" aria-hidden="true"/><div><b>{apiState}</b><small>{events.length?'FastF1 event index':'Historical data status'}</small></div><CircleHelp size={16} aria-hidden="true"/></div></aside>
     {mobileOpen&&<button type="button" className="navigation-backdrop" aria-label="Dismiss navigation overlay" onClick={()=>setMobileOpen(false)}/>}
-    <main className="main"><header className="topbar"><button type="button" className="mobile-toggle" aria-label={mobileOpen?'Close navigation':'Open navigation'} aria-expanded={mobileOpen} aria-controls="app-navigation" onClick={()=>setMobileOpen(!mobileOpen)}><Menu aria-hidden="true"/></button><div className="breadcrumbs" aria-live="polite">APEXION <span>/</span> {section.toUpperCase()}</div><div className="top-controls"><span className="live-status" aria-label={`API status: ${apiState}`}><i aria-hidden="true"/> {apiState.toUpperCase()}</span></div></header>
+    <main className="main"><header className="topbar"><button type="button" className="mobile-toggle" aria-label={mobileOpen?'Close navigation':'Open navigation'} aria-expanded={mobileOpen} aria-controls="app-navigation" onClick={()=>setMobileOpen(!mobileOpen)}><Menu aria-hidden="true"/></button><div className="breadcrumbs" aria-live="polite">APEXION <span>/</span> {section.toUpperCase()}</div><div className="top-controls">{account&&<button type="button" className="account-button" onClick={account.signedIn?account.signOut:account.signIn}>{account.signedIn?<LogOut size={13} aria-hidden="true"/>:<LogIn size={13} aria-hidden="true"/>}{account.signedIn?'F1 · Sign out':'F1 · Sign in'}</button>}<span className="live-status" aria-label={`API status: ${apiState}`}><i aria-hidden="true"/> {apiState.toUpperCase()}</span></div></header>
     <section className="session-strip" aria-label="Race selection">
       <label className="strip-field strip-season"><span>SEASON</span><select aria-label="Season" value={year} onChange={e=>setYear(Number(e.target.value))}>{years.map(y=><option key={y}>{y}</option>)}</select><ChevronDown size={14} aria-hidden="true"/></label>
       <label className="strip-field strip-event"><span>{selectedEvent?`ROUND ${String(selectedEvent.round).padStart(2,'0')}`:'GRAND PRIX'}{selectedEvent?.location&&<em>{selectedEvent.location}{selectedEvent.country?`, ${selectedEvent.country}`:''}{selectedEvent.date?` · ${eventDate(selectedEvent.date)}`:''}</em>}</span><select aria-label="Grand Prix" value={event} disabled={loadingEvents||!events.length} onChange={e=>{const next=events.find(row=>row.name===e.target.value);setEvent(e.target.value);if(next)setSessionName(next.sessions.find(s=>s.toLowerCase()==='race')??next.sessions.at(-1)??'Race');}}>{events.length?events.map(x=><option key={x.name} value={x.name}>{`R${String(x.round).padStart(2,'0')} · ${x.name}`}</option>):<option>{loadingEvents?'Loading events…':'Unavailable'}</option>}</select><ChevronDown size={14} aria-hidden="true"/></label>

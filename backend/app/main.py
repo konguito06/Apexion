@@ -5,7 +5,7 @@ from fastapi.concurrency import run_in_threadpool
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field, field_validator, model_validator
 
-from . import data, evaluation, race_control
+from . import data, evaluation, f1_account, race_control
 from .simulation import DEFAULT_BASELINE_PACE_SECONDS, DEFAULT_DEGRADATION_SECONDS_PER_LAP, DEFAULT_PIT_LOSS_SECONDS, Strategy, optimise_with_metadata, simulate
 
 app = FastAPI(title="Apexion API", version="0.1.0", description="Historical F1 data and transparent strategy simulation")
@@ -190,6 +190,11 @@ class ModelEvaluationReport(BaseModel):
     generated_at: str | None = None
 
 
+class F1SignInRequest(BaseModel):
+    username: str = Field(min_length=1, max_length=320)
+    password: str = Field(min_length=1, max_length=200)
+
+
 class TelemetryCompareRequest(BaseModel):
     year: int = Field(ge=2018)
     event: str = Field(min_length=1, max_length=100)
@@ -216,6 +221,29 @@ def _source_error(feature: str, exc: Exception) -> str:
 @app.get("/api/health")
 def health():
     return {"status": "ok", "data_provider": "FastF1" if data.fastf1 else "unavailable"}
+
+
+@app.get("/api/account")
+def get_account():
+    return f1_account.status()
+
+
+@app.post("/api/account/sign-in")
+def sign_in(request: F1SignInRequest):
+    try:
+        return f1_account.sign_in(request.username, request.password)
+    except f1_account.F1AuthError as exc:
+        raise HTTPException(401, str(exc)) from exc
+    except RuntimeError as exc:
+        raise HTTPException(503, str(exc)) from exc
+
+
+@app.post("/api/account/sign-out")
+def sign_out():
+    try:
+        return f1_account.sign_out()
+    except RuntimeError as exc:
+        raise HTTPException(503, str(exc)) from exc
 
 
 @app.get("/api/models/metrics", response_model=ModelEvaluationReport)
